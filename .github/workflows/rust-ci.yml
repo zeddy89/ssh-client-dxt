@@ -48,9 +48,8 @@ jobs:
         echo "C:\strawberry\perl\bin" >> $env:GITHUB_PATH
     
     - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@${{ matrix.rust }}
       with:
-        toolchain: ${{ matrix.rust }}
         components: rustfmt, clippy
     
     - name: Cache cargo registry
