@@ -3,15 +3,13 @@ use crate::error::{Result, SshMcpError};
 use chrono::{DateTime, Utc};
 use ssh2::{Session, Sftp};
 use std::collections::HashMap;
-use std::net::TcpStream;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
 
-#[derive(Debug)]
 pub struct SshSession {
     pub id: String,
     pub config: SshConfig,

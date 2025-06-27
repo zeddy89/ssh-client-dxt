@@ -1,10 +1,9 @@
 use anyhow::Result;
-use jsonrpc_core::{IoHandler, Params, Value};
+use jsonrpc_core::IoHandler;
 use jsonrpc_stdio_server::ServerBuilder;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 mod ssh_client;
@@ -41,13 +40,13 @@ async fn main() -> Result<()> {
     server.lock().await.register_methods(&mut io)?;
 
     // Start stdio server
-    let server_handle = ServerBuilder::new(io)
+    let server = ServerBuilder::new(io)
         .build();
 
     info!("SSH Client MCP Server is running");
 
     // Run server
-    server_handle.wait();
+    server.await;
 
     info!("SSH Client MCP Server shutting down");
     Ok(())

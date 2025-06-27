@@ -5,7 +5,7 @@ mod tests {
     use ssh2::Session;
     use std::time::Duration;
     use tokio;
-    use std::path::PathBuf;
+    
 
     fn create_mock_config() -> SshConfig {
         SshConfig {

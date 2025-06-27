@@ -106,10 +106,11 @@ impl SshClient {
     
     pub fn calculate_fingerprint(host_key: &[u8]) -> String {
         use sha2::{Sha256, Digest};
+        use base64::{Engine as _, engine::general_purpose};
         let mut hasher = Sha256::new();
         hasher.update(host_key);
         let result = hasher.finalize();
-        base64::encode(result)
+        general_purpose::STANDARD.encode(result)
     }
     
     pub fn execute_command(session: &Session, command: &str) -> Result<(String, String, i32)> {

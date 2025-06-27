@@ -9,6 +9,7 @@ license = "MIT"
 [dependencies]
 # SSH functionality
 ssh2 = "0.9"
+openssl = { version = "0.10", features = ["vendored"] }
 
 # Async runtime
 tokio = { version = "1.40", features = ["full"] }

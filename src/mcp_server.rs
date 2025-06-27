@@ -1,7 +1,6 @@
 use crate::config::{ServerConfig, SshConfig};
 use crate::error::{Result, SshMcpError};
-use crate::session_manager::{SessionManager, SshSession};
-use crate::ssh_client::SshClient;
+use crate::session_manager::SessionManager;
 use crate::tools;
 use crate::prompts;
 use crate::credential_provider::CredentialProvider;
@@ -12,7 +11,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info, warn};
+use tracing::error;
 
 pub struct McpServer {
     config: ServerConfig,

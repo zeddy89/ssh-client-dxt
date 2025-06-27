@@ -3,13 +3,12 @@ use crate::error::{Result, SshMcpError};
 use crate::session_manager::{SessionManager, SshSession};
 use crate::ssh_client::SshClient;
 use crate::credential_provider::{CredentialProvider, CredentialType, prompt_for_credential};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, info};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -323,7 +322,7 @@ pub async fn ssh_manage_keys(params: Value) -> Result<Value> {
             let entry = keyring::Entry::new(&params.service, &account)
                 .map_err(|e| SshMcpError::CredentialStorage(e.to_string()))?;
             
-            entry.delete_password()
+            entry.delete_credential()
                 .map_err(|e| SshMcpError::CredentialStorage(e.to_string()))?;
             
             Ok(json!({
