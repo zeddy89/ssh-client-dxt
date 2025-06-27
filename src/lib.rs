@@ -4,6 +4,9 @@
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::redundant_clone)]
 #![allow(clippy::type_complexity)]
+#![allow(clippy::bind_instead_of_map)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::uninlined_format_args)]
 
 pub mod config;
 pub mod credential_provider;
