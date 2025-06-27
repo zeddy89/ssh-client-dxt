@@ -35,13 +35,13 @@ pub async fn ssh_connect(
         serde_json::from_value(params).map_err(|e| SshMcpError::Validation(e.to_string()))?;
 
     // Resolve credentials from references if provided
-    let password = if let Some(ref_id) = params.password_ref {
-        Some(credential_provider.get_password(&ref_id).await?)
+    let password = if let Some(ref ref_id) = params.password_ref {
+        Some(credential_provider.get_password(ref_id).await?)
     } else {
         params.password
     };
 
-    let private_key_path = if let Some(ref_id) = params.private_key_ref {
+    let private_key_path = if let Some(ref ref_id) = params.private_key_ref {
         // For private key references, we might store the content itself
         // For now, we'll still use file paths
         params.private_key_path.map(PathBuf::from)
@@ -49,8 +49,8 @@ pub async fn ssh_connect(
         params.private_key_path.map(PathBuf::from)
     };
 
-    let passphrase = if let Some(ref_id) = params.passphrase_ref {
-        Some(credential_provider.get_passphrase(&ref_id).await?)
+    let passphrase = if let Some(ref ref_id) = params.passphrase_ref {
+        Some(credential_provider.get_passphrase(ref_id).await?)
     } else {
         params.passphrase
     };

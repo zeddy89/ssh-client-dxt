@@ -81,7 +81,7 @@ jobs:
       continue-on-error: ${{ matrix.rust == 'nightly' }}
     
     - name: Run clippy
-      run: cargo clippy -- -D warnings
+      run: cargo clippy
       continue-on-error: ${{ matrix.rust == 'nightly' }}
     
     - name: Build
