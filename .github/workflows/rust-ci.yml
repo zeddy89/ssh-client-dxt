@@ -47,8 +47,15 @@ jobs:
         choco install strawberryperl -y
         echo "C:\strawberry\perl\bin" >> $env:GITHUB_PATH
     
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+    - name: Install Rust (stable)
+      if: matrix.rust == 'stable'
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Install Rust (nightly)
+      if: matrix.rust == 'nightly'
+      uses: dtolnay/rust-toolchain@nightly
       with:
         components: rustfmt, clippy
     
