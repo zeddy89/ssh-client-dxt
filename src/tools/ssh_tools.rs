@@ -76,7 +76,9 @@ pub async fn ssh_connect(
             if let Some(host_key) = session.host_key() {
                 Ok(SshClient::calculate_fingerprint(host_key.0))
             } else {
-                Err(SshMcpError::HostVerificationFailed("No host key available".to_string()))
+                Err(SshMcpError::HostVerificationFailed(
+                    "No host key available".to_string(),
+                ))
             }
         })
         .await
