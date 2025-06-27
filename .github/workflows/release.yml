@@ -48,9 +48,9 @@ jobs:
     - name: Install build dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        # GitHub Actions macOS runners already have most tools
-        # Just ensure cmake is available (perl is pre-installed)
-        brew list cmake &>/dev/null || brew install cmake
+        # Install OpenSSL and pkg-config for linking
+        brew install openssl@3 pkg-config
+        echo "PKG_CONFIG_PATH=$(brew --prefix openssl@3)/lib/pkgconfig" >> $GITHUB_ENV
     
     - name: Install Rust
       uses: actions-rs/toolchain@v1
@@ -69,7 +69,6 @@ jobs:
     - name: Build
       run: cargo build --release --target ${{ matrix.target }}
       env:
-        OPENSSL_STATIC: 1
         # For macOS, help the build find system libraries
         MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os == 'macos-latest' && '10.15' || '' }}
         # For Windows, ensure static CRT linkage

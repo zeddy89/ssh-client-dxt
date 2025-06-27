@@ -33,13 +33,20 @@ jobs:
     - name: Install build dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        # GitHub Actions macOS runners already have most tools
-        # Just ensure cmake is available (perl is pre-installed)
-        brew list cmake &>/dev/null || brew install cmake
+        # Install OpenSSL and pkg-config for linking
+        brew install openssl@3 pkg-config
+        echo "PKG_CONFIG_PATH=$(brew --prefix openssl@3)/lib/pkgconfig" >> $GITHUB_ENV
     
     - name: Setup Windows build environment
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
+    
+    - name: Install OpenSSL (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        vcpkg install openssl:x64-windows-static
+        echo "OPENSSL_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static" >> $env:GITHUB_ENV
+        echo "OPENSSL_STATIC=1" >> $env:GITHUB_ENV
     
     - name: Install Rust
       uses: actions-rs/toolchain@v1
@@ -78,7 +85,6 @@ jobs:
     - name: Build
       run: cargo build --verbose
       env:
-        OPENSSL_STATIC: 1
         # For macOS, help the build find system libraries
         MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os == 'macos-latest' && '10.15' || '' }}
         # For Windows, ensure static CRT linkage
