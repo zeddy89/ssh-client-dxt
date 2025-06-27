@@ -41,13 +41,8 @@ pub async fn ssh_connect(
         params.password
     };
 
-    let private_key_path = if let Some(ref_id) = &params.private_key_ref {
-        // For private key references, we might store the content itself
-        // For now, we'll still use file paths
-        params.private_key_path.map(PathBuf::from)
-    } else {
-        params.private_key_path.map(PathBuf::from)
-    };
+    // TODO: Implement private key retrieval from credential store when private_key_ref is provided
+    let private_key_path = params.private_key_path.map(PathBuf::from);
 
     let passphrase = if let Some(ref_id) = &params.passphrase_ref {
         Some(credential_provider.get_passphrase(ref_id).await?)
