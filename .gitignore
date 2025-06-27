@@ -6,6 +6,12 @@ node_modules/
 dist/
 build/
 
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
 # Logs
 *.log
 npm-debug.log*
