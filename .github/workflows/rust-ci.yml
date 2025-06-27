@@ -48,11 +48,9 @@ jobs:
         echo "C:\strawberry\perl\bin" >> $env:GITHUB_PATH
     
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        profile: minimal
         toolchain: ${{ matrix.rust }}
-        override: true
         components: rustfmt, clippy
     
     - name: Cache cargo registry
@@ -105,9 +103,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/audit-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Install cargo-audit
+      run: cargo install cargo-audit
+    - name: Run security audit
+      run: cargo audit
 
   coverage:
     name: Code Coverage
@@ -121,11 +120,9 @@ jobs:
         sudo apt-get install -y build-essential cmake perl
     
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        profile: minimal
         toolchain: stable
-        override: true
     
     - name: Install tarpaulin
       run: cargo install cargo-tarpaulin

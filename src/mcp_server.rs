@@ -259,7 +259,13 @@ impl AuditLogger {
         });
 
         if let Some(path) = &self.log_path {
-            let log_line = format!("{}\n", serde_json::to_string(&log_entry).unwrap());
+            let log_line = match serde_json::to_string(&log_entry) {
+                Ok(json) => format!("{}\n", json),
+                Err(e) => {
+                    error!("Failed to serialize audit log entry: {}", e);
+                    return;
+                }
+            };
             if let Err(e) = tokio::fs::write(path, log_line).await {
                 error!("Failed to write audit log: {}", e);
             }
