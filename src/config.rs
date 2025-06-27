@@ -65,7 +65,7 @@ pub struct PortForwardConfig {
     pub forward_type: PortForwardType,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PortForwardType {
     Local,

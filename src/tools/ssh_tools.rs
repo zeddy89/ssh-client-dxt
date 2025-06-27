@@ -244,7 +244,7 @@ pub async fn ssh_port_forward(
                 local_port: params.local_port,
                 remote_host: params.remote_host.clone(),
                 remote_port: params.remote_port,
-                forward_type: forward_type.clone(),
+                forward_type,
             };
 
             // Store port forward config
@@ -319,7 +319,7 @@ pub async fn ssh_manage_keys(params: Value) -> Result<Value> {
                 "action": "retrieve",
                 "service": params.service,
                 "account": account,
-                "password": password
+                "message": "Password retrieved successfully"
             }))
         }
         "delete" => {
@@ -412,7 +412,7 @@ pub async fn ssh_verify_host(
         }
         _ => Err(SshMcpError::Validation(format!(
             "Invalid action: {}",
-            params.action.unwrap()
+            params.action.as_deref().unwrap_or("unknown")
         ))),
     }
 }

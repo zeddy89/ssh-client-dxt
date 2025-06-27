@@ -1,6 +1,9 @@
 #![allow(missing_docs)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::redundant_clone)]
+#![allow(clippy::type_complexity)]
 
 pub mod config;
 pub mod credential_provider;
