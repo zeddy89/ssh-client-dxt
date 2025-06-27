@@ -1,6 +1,7 @@
 use crate::error::{Result, SshMcpError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
