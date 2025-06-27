@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
@@ -17,7 +17,7 @@ impl Default for ServerConfig {
         let home_dir = directories::UserDirs::new()
             .and_then(|dirs| Some(dirs.home_dir().to_path_buf()))
             .unwrap_or_else(|| PathBuf::from("."));
-        
+
         Self {
             max_sessions: std::env::var("MAX_SESSIONS")
                 .ok()
@@ -27,15 +27,13 @@ impl Default for ServerConfig {
                 std::env::var("SESSION_TIMEOUT")
                     .ok()
                     .and_then(|s| s.parse().ok())
-                    .unwrap_or(1800)
+                    .unwrap_or(1800),
             ),
             enable_audit_logging: std::env::var("ENABLE_AUDIT_LOGGING")
                 .ok()
                 .map(|s| s.to_lowercase() == "true")
                 .unwrap_or(false),
-            audit_log_path: std::env::var("AUDIT_LOG_PATH")
-                .ok()
-                .map(PathBuf::from),
+            audit_log_path: std::env::var("AUDIT_LOG_PATH").ok().map(PathBuf::from),
             known_hosts_path: home_dir.join(".ssh").join("known_hosts"),
             saved_configs_path: home_dir.join(".ssh-mcp").join("configs.json"),
         }

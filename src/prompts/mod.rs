@@ -38,23 +38,26 @@ pub fn get_prompt_definitions() -> Vec<Value> {
                     "required": false
                 }
             ]
-        })
+        }),
     ]
 }
 
 pub async fn get_ssh_config_prompt(args: Value) -> Result<Value> {
-    let host = args.get("host")
+    let host = args
+        .get("host")
         .and_then(|v| v.as_str())
         .ok_or_else(|| SshMcpError::Validation("Host is required".to_string()))?;
-    
-    let username = args.get("username")
+
+    let username = args
+        .get("username")
         .and_then(|v| v.as_str())
         .ok_or_else(|| SshMcpError::Validation("Username is required".to_string()))?;
-    
-    let auth_method = args.get("authMethod")
+
+    let auth_method = args
+        .get("authMethod")
         .and_then(|v| v.as_str())
         .ok_or_else(|| SshMcpError::Validation("Auth method is required".to_string()))?;
-    
+
     let prompt_text = match auth_method {
         "password" => {
             format!(
@@ -71,7 +74,7 @@ pub async fn get_ssh_config_prompt(args: Value) -> Result<Value> {
                 }}",
                 username, host, host, username
             )
-        },
+        }
         "key" => {
             format!(
                 "SSH Configuration for {}@{}\n\n\
@@ -88,14 +91,15 @@ pub async fn get_ssh_config_prompt(args: Value) -> Result<Value> {
                 }}",
                 username, host, host, username
             )
-        },
+        }
         _ => {
-            return Err(SshMcpError::Validation(
-                format!("Invalid auth method: {}", auth_method)
-            ))
+            return Err(SshMcpError::Validation(format!(
+                "Invalid auth method: {}",
+                auth_method
+            )))
         }
     };
-    
+
     Ok(json!({
         "prompt": prompt_text,
         "metadata": {
@@ -111,7 +115,7 @@ pub async fn get_quick_connect_prompt(
     saved_configs: Arc<Mutex<HashMap<String, SshConfig>>>,
 ) -> Result<Value> {
     let configs = saved_configs.lock().await;
-    
+
     if let Some(config_name) = args.get("configName").and_then(|v| v.as_str()) {
         // Connect to specific config
         if let Some(config) = configs.get(config_name) {
@@ -134,7 +138,7 @@ pub async fn get_quick_connect_prompt(
                 config.username,
                 config.port
             );
-            
+
             Ok(json!({
                 "prompt": prompt_text,
                 "metadata": {
@@ -143,25 +147,31 @@ pub async fn get_quick_connect_prompt(
                 }
             }))
         } else {
-            Err(SshMcpError::Configuration(
-                format!("Configuration '{}' not found", config_name)
-            ))
+            Err(SshMcpError::Configuration(format!(
+                "Configuration '{}' not found",
+                config_name
+            )))
         }
     } else {
         // List all configs
-        let config_list: Vec<String> = configs.iter().map(|(name, config)| {
-            format!(
-                "- {}: {}@{}:{} {}",
-                name,
-                config.username,
-                config.host,
-                config.port,
-                config.description.as_deref()
-                    .map(|d| format!("({})", d))
-                    .unwrap_or_default()
-            )
-        }).collect();
-        
+        let config_list: Vec<String> = configs
+            .iter()
+            .map(|(name, config)| {
+                format!(
+                    "- {}: {}@{}:{} {}",
+                    name,
+                    config.username,
+                    config.host,
+                    config.port,
+                    config
+                        .description
+                        .as_deref()
+                        .map(|d| format!("({})", d))
+                        .unwrap_or_default()
+                )
+            })
+            .collect();
+
         let prompt_text = if config_list.is_empty() {
             "No saved SSH configurations found.\n\n\
             To save a configuration, use:\n\
@@ -169,7 +179,8 @@ pub async fn get_quick_connect_prompt(
               \"action\": \"save\",\n\
               \"name\": \"my-server\",\n\
               \"config\": { ... }\n\
-            }".to_string()
+            }"
+            .to_string()
         } else {
             format!(
                 "Available SSH Configurations:\n\n{}\n\n\
@@ -177,7 +188,7 @@ pub async fn get_quick_connect_prompt(
                 config_list.join("\n")
             )
         };
-        
+
         Ok(json!({
             "prompt": prompt_text,
             "metadata": {

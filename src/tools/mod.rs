@@ -135,8 +135,8 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "properties": {
                     "action": { "type": "string", "enum": ["list", "save", "load", "delete"], "description": "Action to perform" },
                     "name": { "type": "string", "description": "Configuration name" },
-                    "config": { 
-                        "type": "object", 
+                    "config": {
+                        "type": "object",
                         "description": "SSH configuration (for save action)",
                         "properties": {
                             "host": { "type": "string" },
@@ -162,6 +162,6 @@ pub fn get_tool_definitions() -> Vec<Value> {
                     "referenceId": { "type": "string", "description": "Reference ID for remove action" }
                 }
             }
-        })
+        }),
     ]
 }

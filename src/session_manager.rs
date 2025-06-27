@@ -1,4 +1,4 @@
-use crate::config::{SshConfig, PortForwardConfig};
+use crate::config::{PortForwardConfig, SshConfig};
 use crate::error::{Result, SshMcpError};
 use chrono::{DateTime, Utc};
 use ssh2::{Session, Sftp};
@@ -42,7 +42,8 @@ impl SshSession {
     }
 
     pub fn sftp(&self) -> Result<Sftp> {
-        self.session.sftp()
+        self.session
+            .sftp()
             .map_err(|e| SshMcpError::FileOperation(e.to_string()))
     }
 }
@@ -76,22 +77,24 @@ impl SessionManager {
 
     pub async fn add_session(&self, session: SshSession) -> Result<String> {
         let mut sessions = self.sessions.lock().await;
-        
+
         if sessions.len() >= self.max_sessions {
             return Err(SshMcpError::MaxSessionsReached(self.max_sessions));
         }
 
         let session_id = session.id.clone();
-        info!("Adding SSH session: {} to {}@{}:{}", 
-            session_id, session.config.username, session.config.host, session.config.port);
-        
+        info!(
+            "Adding SSH session: {} to {}@{}:{}",
+            session_id, session.config.username, session.config.host, session.config.port
+        );
+
         sessions.insert(session_id.clone(), session);
         Ok(session_id)
     }
 
     pub async fn get_session(&self, session_id: &str) -> Result<()> {
         let mut sessions = self.sessions.lock().await;
-        
+
         if let Some(session) = sessions.get_mut(session_id) {
             session.update_activity();
             Ok(())
@@ -105,7 +108,7 @@ impl SessionManager {
         F: FnOnce(&mut SshSession) -> Result<R>,
     {
         let mut sessions = self.sessions.lock().await;
-        
+
         if let Some(session) = sessions.get_mut(session_id) {
             session.update_activity();
             f(session)
@@ -116,7 +119,7 @@ impl SessionManager {
 
     pub async fn remove_session(&self, session_id: &str) -> Result<()> {
         let mut sessions = self.sessions.lock().await;
-        
+
         if sessions.remove(session_id).is_some() {
             info!("Removed SSH session: {}", session_id);
             Ok(())
@@ -127,25 +130,29 @@ impl SessionManager {
 
     pub async fn list_sessions(&self) -> Vec<(String, SshConfig, DateTime<Utc>)> {
         let sessions = self.sessions.lock().await;
-        sessions.iter()
+        sessions
+            .iter()
             .map(|(id, session)| (id.clone(), session.config.clone(), session.created_at))
             .collect()
     }
 
     async fn cleanup_expired_sessions(
         sessions: Arc<Mutex<HashMap<String, SshSession>>>,
-        timeout: Duration
+        timeout: Duration,
     ) {
         let mut sessions = sessions.lock().await;
-        let expired: Vec<String> = sessions.iter()
+        let expired: Vec<String> = sessions
+            .iter()
             .filter(|(_, session)| session.is_expired(timeout))
             .map(|(id, _)| id.clone())
             .collect();
 
         for id in expired {
             if let Some(session) = sessions.remove(&id) {
-                warn!("Cleaning up expired session: {} to {}@{}", 
-                    id, session.config.username, session.config.host);
+                warn!(
+                    "Cleaning up expired session: {} to {}@{}",
+                    id, session.config.username, session.config.host
+                );
             }
         }
     }

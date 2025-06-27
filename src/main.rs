@@ -6,14 +6,14 @@ use tokio::sync::Mutex;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
-mod ssh_client;
-mod mcp_server;
-mod session_manager;
 mod config;
-mod error;
-mod tools;
-mod prompts;
 mod credential_provider;
+mod error;
+mod mcp_server;
+mod prompts;
+mod session_manager;
+mod ssh_client;
+mod tools;
 
 use crate::mcp_server::McpServer;
 
@@ -22,8 +22,7 @@ async fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info"))
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .json()
         .init();
@@ -35,13 +34,12 @@ async fn main() -> Result<()> {
 
     // Set up JSON-RPC handler
     let mut io = IoHandler::new();
-    
+
     // Register MCP methods
     server.lock().await.register_methods(&mut io)?;
 
     // Start stdio server
-    let server = ServerBuilder::new(io)
-        .build();
+    let server = ServerBuilder::new(io).build();
 
     info!("SSH Client MCP Server is running");
 
