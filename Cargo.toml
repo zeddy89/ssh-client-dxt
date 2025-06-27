@@ -10,10 +10,10 @@ license = "MIT"
 # SSH functionality
 ssh2 = "0.9"
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
 
-[target.'cfg(not(target_os = "linux"))'.dependencies]
+[target.'cfg(target_os = "macos")'.dependencies]
 openssl = "0.10"
 
 # Async runtime

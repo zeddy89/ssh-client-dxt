@@ -41,12 +41,11 @@ jobs:
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
     
-    - name: Install OpenSSL (Windows)
+    - name: Install build tools (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        vcpkg install openssl:x64-windows-static
-        echo "OPENSSL_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static" >> $env:GITHUB_ENV
-        echo "OPENSSL_STATIC=1" >> $env:GITHUB_ENV
+        choco install strawberryperl -y
+        echo "C:\strawberry\perl\bin" >> $env:GITHUB_PATH
     
     - name: Install Rust
       uses: actions-rs/toolchain@v1
@@ -89,6 +88,8 @@ jobs:
         MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os == 'macos-latest' && '10.15' || '' }}
         # For Windows, ensure static CRT linkage
         RUSTFLAGS: ${{ matrix.os == 'windows-latest' && '-C target-feature=+crt-static' || '' }}
+        # For Linux, ensure static linking
+        OPENSSL_STATIC: ${{ matrix.os == 'ubuntu-latest' && '1' || '' }}
     
     - name: Run tests
       run: cargo test --verbose
