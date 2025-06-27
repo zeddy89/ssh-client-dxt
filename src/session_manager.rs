@@ -41,11 +41,7 @@ impl SshSession {
         elapsed.num_seconds() > timeout.as_secs() as i64
     }
 
-    pub fn sftp(&self) -> Result<Sftp> {
-        self.session
-            .sftp()
-            .map_err(|e| SshMcpError::FileOperation(e.to_string()))
-    }
+    // SFTP operations are now handled by creating new connections in blocking tasks
 }
 
 pub struct SessionManager {
