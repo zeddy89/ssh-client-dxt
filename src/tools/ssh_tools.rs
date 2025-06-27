@@ -70,7 +70,7 @@ pub async fn ssh_connect(
     if config.strict_host_checking {
         let config_clone = config.clone();
         let host_port = format!("{}:{}", config.host, config.port);
-        
+
         let fingerprint = tokio::task::spawn_blocking(move || -> Result<String> {
             let session = SshClient::connect(&config_clone)?;
             if let Some(host_key) = session.host_key() {
@@ -81,7 +81,7 @@ pub async fn ssh_connect(
         })
         .await
         .map_err(|e| SshMcpError::SshConnection(format!("Task join error: {}", e)))??;
-        
+
         let hosts = known_hosts.lock().await;
         if let Some(known_fp) = hosts.get(&host_port) {
             if known_fp != &fingerprint {
@@ -101,7 +101,7 @@ pub async fn ssh_connect(
     })
     .await
     .map_err(|e| SshMcpError::SshConnection(format!("Task join error: {}", e)))??;
-    
+
     // Create session without storing the SSH connection
     let ssh_session = SshSession::new(config.clone());
     let session_id = session_manager.add_session(ssh_session).await?;
@@ -130,7 +130,7 @@ pub async fn ssh_execute(params: Value, session_manager: Arc<SessionManager>) ->
     let config = session_manager
         .with_session(&params.session_id, |session| Ok(session.config.clone()))
         .await?;
-    
+
     // Execute command in blocking task
     let command = params.command.clone();
     let result = tokio::task::spawn_blocking(move || -> Result<Value> {
@@ -204,7 +204,7 @@ pub async fn ssh_upload_file(params: Value, session_manager: Arc<SessionManager>
     let config = session_manager
         .with_session(&params.session_id, |session| Ok(session.config.clone()))
         .await?;
-    
+
     // Upload file in blocking task
     let local_path = params.local_path.clone();
     let remote_path = params.remote_path.clone();
@@ -232,7 +232,7 @@ pub async fn ssh_download_file(
     let config = session_manager
         .with_session(&params.session_id, |session| Ok(session.config.clone()))
         .await?;
-    
+
     // Download file in blocking task
     let local_path = params.local_path.clone();
     let remote_path = params.remote_path.clone();
