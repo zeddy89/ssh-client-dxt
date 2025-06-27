@@ -73,6 +73,9 @@ jobs:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
     
+    - name: Fetch dependencies
+      run: cargo fetch --verbose
+    
     - name: Check formatting
       run: cargo fmt -- --check
       continue-on-error: ${{ matrix.rust == 'nightly' }}
