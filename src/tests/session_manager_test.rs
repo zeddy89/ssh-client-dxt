@@ -2,7 +2,6 @@
 mod tests {
     use crate::config::SshConfig;
     use crate::session_manager::{SessionManager, SshSession};
-    use ssh2::Session;
     use std::time::Duration;
     use tokio;
 
@@ -23,10 +22,9 @@ mod tests {
     async fn test_add_session() {
         let manager = SessionManager::new(10, Duration::from_secs(1800));
 
-        // Create a mock session (in real tests, we'd use a mock SSH session)
+        // Create a mock session
         let config = create_mock_config();
-        let session = Session::new().unwrap();
-        let ssh_session = SshSession::new(config.clone(), session);
+        let ssh_session = SshSession::new(config.clone());
 
         // Add session
         let session_id = manager.add_session(ssh_session).await.unwrap();
@@ -45,15 +43,15 @@ mod tests {
 
         // Add first session
         let config = create_mock_config();
-        let session1 = SshSession::new(config.clone(), Session::new().unwrap());
+        let session1 = SshSession::new(config.clone());
         manager.add_session(session1).await.unwrap();
 
         // Add second session
-        let session2 = SshSession::new(config.clone(), Session::new().unwrap());
+        let session2 = SshSession::new(config.clone());
         manager.add_session(session2).await.unwrap();
 
         // Third session should fail
-        let session3 = SshSession::new(config, Session::new().unwrap());
+        let session3 = SshSession::new(config);
         let result = manager.add_session(session3).await;
         assert!(result.is_err());
     }
@@ -64,7 +62,7 @@ mod tests {
 
         // Add session
         let config = create_mock_config();
-        let ssh_session = SshSession::new(config, Session::new().unwrap());
+        let ssh_session = SshSession::new(config);
         let session_id = manager.add_session(ssh_session).await.unwrap();
 
         // Remove session
@@ -84,7 +82,7 @@ mod tests {
 
         // Add session
         let config = create_mock_config();
-        let ssh_session = SshSession::new(config, Session::new().unwrap());
+        let ssh_session = SshSession::new(config);
         let session_id = manager.add_session(ssh_session).await.unwrap();
 
         // Get session (updates activity)
@@ -102,7 +100,7 @@ mod tests {
         // Add multiple sessions
         let config = create_mock_config();
         for _ in 0..3 {
-            let ssh_session = SshSession::new(config.clone(), Session::new().unwrap());
+            let ssh_session = SshSession::new(config.clone());
             manager.add_session(ssh_session).await.unwrap();
         }
 
