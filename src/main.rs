@@ -1,3 +1,7 @@
+#![allow(missing_docs)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
 use anyhow::Result;
 use jsonrpc_core::IoHandler;
 use jsonrpc_stdio_server::ServerBuilder;

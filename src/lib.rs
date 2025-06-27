@@ -1,3 +1,7 @@
+#![allow(missing_docs)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
 pub mod config;
 pub mod credential_provider;
 pub mod error;
