@@ -16,13 +16,35 @@ pub fn get_tool_definitions() -> Vec<Value> {
                     "host": { "type": "string", "description": "SSH server hostname or IP" },
                     "port": { "type": "integer", "description": "SSH server port", "default": 22 },
                     "username": { "type": "string", "description": "SSH username" },
-                    "password": { "type": "string", "description": "SSH password (optional - avoid using directly)" },
-                    "passwordRef": { "type": "string", "description": "Reference ID for stored password (preferred)" },
-                    "privateKeyPath": { "type": "string", "description": "Path to private key file" },
-                    "privateKeyRef": { "type": "string", "description": "Reference ID for stored private key" },
-                    "passphrase": { "type": "string", "description": "Private key passphrase (avoid using directly)" },
-                    "passphraseRef": { "type": "string", "description": "Reference ID for stored passphrase (preferred)" },
-                    "strictHostChecking": { "type": "boolean", "description": "Enable strict host checking", "default": true }
+                    "password": {
+                        "type": "string",
+                        "description": "SSH password (optional - avoid using directly)"
+                    },
+                    "passwordRef": {
+                        "type": "string",
+                        "description": "Reference ID for stored password (preferred)"
+                    },
+                    "privateKeyPath": {
+                        "type": "string",
+                        "description": "Path to private key file"
+                    },
+                    "privateKeyRef": {
+                        "type": "string",
+                        "description": "Reference ID for stored private key"
+                    },
+                    "passphrase": {
+                        "type": "string",
+                        "description": "Private key passphrase (avoid using directly)"
+                    },
+                    "passphraseRef": {
+                        "type": "string",
+                        "description": "Reference ID for stored passphrase (preferred)"
+                    },
+                    "strictHostChecking": {
+                        "type": "boolean",
+                        "description": "Enable strict host checking",
+                        "default": true
+                    }
                 }
             }
         }),
@@ -94,7 +116,12 @@ pub fn get_tool_definitions() -> Vec<Value> {
                     "localPort": { "type": "integer", "description": "Local port" },
                     "remoteHost": { "type": "string", "description": "Remote host" },
                     "remotePort": { "type": "integer", "description": "Remote port" },
-                    "type": { "type": "string", "enum": ["local", "remote"], "description": "Forward type", "default": "local" }
+                    "type": {
+                        "type": "string",
+                        "enum": ["local", "remote"],
+                        "description": "Forward type",
+                        "default": "local"
+                    }
                 }
             }
         }),
@@ -105,10 +132,17 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "required": ["action", "service"],
                 "properties": {
-                    "action": { "type": "string", "enum": ["store", "retrieve", "delete"], "description": "Action to perform" },
+                    "action": {
+                        "type": "string",
+                        "enum": ["store", "retrieve", "delete"],
+                        "description": "Action to perform"
+                    },
                     "service": { "type": "string", "description": "Service identifier" },
                     "account": { "type": "string", "description": "Account name" },
-                    "password": { "type": "string", "description": "Password or passphrase (for store action)" }
+                    "password": {
+                        "type": "string",
+                        "description": "Password or passphrase (for store action)"
+                    }
                 }
             }
         }),
@@ -121,8 +155,16 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "properties": {
                     "host": { "type": "string", "description": "SSH server hostname" },
                     "port": { "type": "integer", "description": "SSH server port", "default": 22 },
-                    "fingerprint": { "type": "string", "description": "Expected host key fingerprint" },
-                    "action": { "type": "string", "enum": ["verify", "add", "remove"], "description": "Action to perform", "default": "verify" }
+                    "fingerprint": {
+                        "type": "string",
+                        "description": "Expected host key fingerprint"
+                    },
+                    "action": {
+                        "type": "string",
+                        "enum": ["verify", "add", "remove"],
+                        "description": "Action to perform",
+                        "default": "verify"
+                    }
                 }
             }
         }),
@@ -133,7 +175,11 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "required": ["action"],
                 "properties": {
-                    "action": { "type": "string", "enum": ["list", "save", "load", "delete"], "description": "Action to perform" },
+                    "action": {
+                        "type": "string",
+                        "enum": ["list", "save", "load", "delete"],
+                        "description": "Action to perform"
+                    },
                     "name": { "type": "string", "description": "Configuration name" },
                     "config": {
                         "type": "object",
@@ -151,15 +197,29 @@ pub fn get_tool_definitions() -> Vec<Value> {
         }),
         json!({
             "name": "ssh_credential_store",
-            "description": "Store SSH credentials securely (passwords/keys never visible to Claude)",
+            "description": "Store SSH credentials securely (never visible to Claude)",
             "inputSchema": {
                 "type": "object",
                 "required": ["action"],
                 "properties": {
-                    "action": { "type": "string", "enum": ["store", "list", "remove"], "description": "Action to perform" },
-                    "credentialType": { "type": "string", "enum": ["password", "privateKey", "passphrase"], "description": "Type of credential" },
-                    "description": { "type": "string", "description": "Human-readable description of the credential" },
-                    "referenceId": { "type": "string", "description": "Reference ID for remove action" }
+                    "action": {
+                        "type": "string",
+                        "enum": ["store", "list", "remove"],
+                        "description": "Action to perform"
+                    },
+                    "credentialType": {
+                        "type": "string",
+                        "enum": ["password", "privateKey", "passphrase"],
+                        "description": "Type of credential"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Human-readable description of the credential"
+                    },
+                    "referenceId": {
+                        "type": "string",
+                        "description": "Reference ID for remove action"
+                    }
                 }
             }
         }),
