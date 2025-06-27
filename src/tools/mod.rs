@@ -16,9 +16,12 @@ pub fn get_tool_definitions() -> Vec<Value> {
                     "host": { "type": "string", "description": "SSH server hostname or IP" },
                     "port": { "type": "integer", "description": "SSH server port", "default": 22 },
                     "username": { "type": "string", "description": "SSH username" },
-                    "password": { "type": "string", "description": "SSH password (optional)" },
+                    "password": { "type": "string", "description": "SSH password (optional - avoid using directly)" },
+                    "passwordRef": { "type": "string", "description": "Reference ID for stored password (preferred)" },
                     "privateKeyPath": { "type": "string", "description": "Path to private key file" },
-                    "passphrase": { "type": "string", "description": "Private key passphrase" },
+                    "privateKeyRef": { "type": "string", "description": "Reference ID for stored private key" },
+                    "passphrase": { "type": "string", "description": "Private key passphrase (avoid using directly)" },
+                    "passphraseRef": { "type": "string", "description": "Reference ID for stored passphrase (preferred)" },
                     "strictHostChecking": { "type": "boolean", "description": "Enable strict host checking", "default": true }
                 }
             }
@@ -143,6 +146,20 @@ pub fn get_tool_definitions() -> Vec<Value> {
                             "description": { "type": "string" }
                         }
                     }
+                }
+            }
+        }),
+        json!({
+            "name": "ssh_credential_store",
+            "description": "Store SSH credentials securely (passwords/keys never visible to Claude)",
+            "inputSchema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                    "action": { "type": "string", "enum": ["store", "list", "remove"], "description": "Action to perform" },
+                    "credentialType": { "type": "string", "enum": ["password", "privateKey", "passphrase"], "description": "Type of credential" },
+                    "description": { "type": "string", "description": "Human-readable description of the credential" },
+                    "referenceId": { "type": "string", "description": "Reference ID for remove action" }
                 }
             }
         })

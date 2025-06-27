@@ -4,6 +4,7 @@ use crate::session_manager::{SessionManager, SshSession};
 use crate::ssh_client::SshClient;
 use crate::tools;
 use crate::prompts;
+use crate::credential_provider::CredentialProvider;
 use jsonrpc_core::{IoHandler, Params, Value};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -19,6 +20,7 @@ pub struct McpServer {
     known_hosts: Arc<Mutex<HashMap<String, String>>>,
     saved_configs: Arc<Mutex<HashMap<String, SshConfig>>>,
     audit_logger: Option<Arc<Mutex<AuditLogger>>>,
+    credential_provider: Arc<CredentialProvider>,
 }
 
 impl McpServer {
@@ -44,12 +46,16 @@ impl McpServer {
             None
         };
         
+        // Initialize credential provider
+        let credential_provider = Arc::new(CredentialProvider::new());
+        
         Ok(Self {
             config,
             session_manager,
             known_hosts,
             saved_configs,
             audit_logger,
+            credential_provider,
         })
     }
     
@@ -88,12 +94,14 @@ impl McpServer {
         let known_hosts = self.known_hosts.clone();
         let saved_configs = self.saved_configs.clone();
         let audit_logger = self.audit_logger.clone();
+        let credential_provider = self.credential_provider.clone();
         
         io.add_method("tools/call", move |params: Params| {
             let session_manager = session_manager.clone();
             let known_hosts = known_hosts.clone();
             let saved_configs = saved_configs.clone();
             let audit_logger = audit_logger.clone();
+            let credential_provider = credential_provider.clone();
             
             Box::pin(async move {
                 let params: ToolCallParams = params.parse()?;
@@ -105,7 +113,7 @@ impl McpServer {
                 
                 let result = match params.name.as_str() {
                     "ssh_connect" => {
-                        tools::ssh_connect(params.arguments, session_manager.clone(), known_hosts.clone()).await
+                        tools::ssh_connect(params.arguments, session_manager.clone(), known_hosts.clone(), credential_provider.clone()).await
                     },
                     "ssh_execute" => {
                         tools::ssh_execute(params.arguments, session_manager.clone()).await
@@ -133,6 +141,9 @@ impl McpServer {
                     },
                     "ssh_config_manage" => {
                         tools::ssh_config_manage(params.arguments, saved_configs.clone()).await
+                    },
+                    "ssh_credential_store" => {
+                        tools::ssh_credential_store(params.arguments, credential_provider.clone()).await
                     },
                     _ => Err(SshMcpError::McpProtocol(format!("Unknown tool: {}", params.name))),
                 };

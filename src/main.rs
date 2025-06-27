@@ -14,6 +14,7 @@ mod config;
 mod error;
 mod tools;
 mod prompts;
+mod credential_provider;
 
 use crate::mcp_server::McpServer;
 

@@ -2,6 +2,7 @@ use crate::config::{SshConfig, PortForwardConfig, PortForwardType};
 use crate::error::{Result, SshMcpError};
 use crate::session_manager::{SessionManager, SshSession};
 use crate::ssh_client::SshClient;
+use crate::credential_provider::{CredentialProvider, CredentialType, prompt_for_credential};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -17,8 +18,11 @@ pub struct ConnectParams {
     pub port: Option<u16>,
     pub username: String,
     pub password: Option<String>,
+    pub password_ref: Option<String>,  // Reference to stored password
     pub private_key_path: Option<String>,
+    pub private_key_ref: Option<String>,  // Reference to stored private key
     pub passphrase: Option<String>,
+    pub passphrase_ref: Option<String>,  // Reference to stored passphrase
     pub strict_host_checking: Option<bool>,
 }
 
@@ -26,17 +30,39 @@ pub async fn ssh_connect(
     params: Value,
     session_manager: Arc<SessionManager>,
     known_hosts: Arc<Mutex<HashMap<String, String>>>,
+    credential_provider: Arc<CredentialProvider>,
 ) -> Result<Value> {
     let params: ConnectParams = serde_json::from_value(params)
         .map_err(|e| SshMcpError::Validation(e.to_string()))?;
+    
+    // Resolve credentials from references if provided
+    let password = if let Some(ref_id) = params.password_ref {
+        Some(credential_provider.get_password(&ref_id).await?)
+    } else {
+        params.password
+    };
+    
+    let private_key_path = if let Some(ref_id) = params.private_key_ref {
+        // For private key references, we might store the content itself
+        // For now, we'll still use file paths
+        params.private_key_path.map(PathBuf::from)
+    } else {
+        params.private_key_path.map(PathBuf::from)
+    };
+    
+    let passphrase = if let Some(ref_id) = params.passphrase_ref {
+        Some(credential_provider.get_passphrase(&ref_id).await?)
+    } else {
+        params.passphrase
+    };
     
     let config = SshConfig {
         host: params.host,
         port: params.port.unwrap_or(22),
         username: params.username,
-        password: params.password,
-        private_key_path: params.private_key_path.map(PathBuf::from),
-        passphrase: params.passphrase,
+        password,
+        private_key_path,
+        passphrase,
         strict_host_checking: params.strict_host_checking.unwrap_or(true),
         description: None,
     };
@@ -444,6 +470,104 @@ pub async fn ssh_config_manage(
             Ok(json!({
                 "name": name,
                 "deleted": deleted
+            }))
+        },
+        _ => Err(SshMcpError::Validation(format!("Invalid action: {}", params.action)))
+    }
+}
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialStoreParams {
+    pub action: String,
+    pub credential_type: Option<String>,
+    pub description: Option<String>,
+    pub reference_id: Option<String>,
+}
+
+pub async fn ssh_credential_store(
+    params: Value,
+    credential_provider: Arc<CredentialProvider>,
+) -> Result<Value> {
+    let params: CredentialStoreParams = serde_json::from_value(params)
+        .map_err(|e| SshMcpError::Validation(e.to_string()))?;
+    
+    match params.action.as_str() {
+        "store" => {
+            let credential_type = match params.credential_type.as_deref() {
+                Some("password") => CredentialType::Password,
+                Some("privateKey") => CredentialType::PrivateKey,
+                Some("passphrase") => CredentialType::Passphrase,
+                _ => return Err(SshMcpError::Validation("credential_type required for store action".to_string()))
+            };
+            
+            let description = params.description.unwrap_or_else(|| {
+                format!("Stored {} credential", match credential_type {
+                    CredentialType::Password => "password",
+                    CredentialType::PrivateKey => "private key",
+                    CredentialType::Passphrase => "passphrase",
+                })
+            });
+            
+            // Prompt user for credential outside of Claude's context
+            let prompt_msg = format!("Please enter {} for: {}", 
+                match credential_type {
+                    CredentialType::Password => "password",
+                    CredentialType::PrivateKey => "private key content or path",
+                    CredentialType::Passphrase => "passphrase",
+                },
+                description
+            );
+            
+            let credential_value = prompt_for_credential(credential_type.clone(), &prompt_msg).await?;
+            
+            // Store credential and get reference ID
+            let ref_id = credential_provider.store_credential(
+                credential_type.clone(),
+                credential_value,
+                description.clone()
+            ).await?;
+            
+            Ok(json!({
+                "action": "store",
+                "referenceId": ref_id,
+                "credentialType": match credential_type {
+                    CredentialType::Password => "password",
+                    CredentialType::PrivateKey => "privateKey",
+                    CredentialType::Passphrase => "passphrase",
+                },
+                "description": description,
+                "stored": true
+            }))
+        },
+        "list" => {
+            let references = credential_provider.list_references().await;
+            let ref_list: Vec<Value> = references.into_iter().map(|r| {
+                json!({
+                    "referenceId": r.id,
+                    "credentialType": match r.credential_type {
+                        CredentialType::Password => "password",
+                        CredentialType::PrivateKey => "privateKey",
+                        CredentialType::Passphrase => "passphrase",
+                    },
+                    "description": r.description
+                })
+            }).collect();
+            
+            Ok(json!({
+                "action": "list",
+                "credentials": ref_list
+            }))
+        },
+        "remove" => {
+            let ref_id = params.reference_id.ok_or_else(|| 
+                SshMcpError::Validation("reference_id required for remove action".to_string()))?;
+            
+            credential_provider.remove_credential(&ref_id).await?;
+            
+            Ok(json!({
+                "action": "remove",
+                "referenceId": ref_id,
+                "removed": true
             }))
         },
         _ => Err(SshMcpError::Validation(format!("Invalid action: {}", params.action)))

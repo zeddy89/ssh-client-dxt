@@ -5,6 +5,7 @@ A security-focused SSH client implemented as a Model Context Protocol (MCP) serv
 ## Features
 
 ### Security Features
+- **Credential Isolation**: Claude never sees passwords or private keys - uses secure reference system
 - **Encrypted Credential Storage**: Uses OS keychain for secure password storage
 - **Host Key Verification**: Validates SSH host keys against known hosts
 - **Session Management**: Automatic session timeout and cleanup
@@ -66,8 +67,10 @@ The extension supports the following configuration options in Claude Desktop:
 
 1. **Authentication**
    - Use key-based authentication when possible
+   - Use credential references instead of passing passwords directly
    - Store passwords securely using the built-in credential storage
    - Never hardcode credentials in scripts
+   - See [CREDENTIAL_SECURITY.md](./CREDENTIAL_SECURITY.md) for credential isolation details
 
 2. **Host Verification**
    - Always verify host keys on first connection
