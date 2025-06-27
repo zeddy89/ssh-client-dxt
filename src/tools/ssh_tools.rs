@@ -68,25 +68,42 @@ pub async fn ssh_connect(
 
     // Verify host key if strict checking is enabled
     if config.strict_host_checking {
-        let session = SshClient::connect(&config)?;
-        if let Some(host_key) = session.host_key() {
-            let fingerprint = SshClient::calculate_fingerprint(host_key.0);
-            let hosts = known_hosts.lock().await;
-
-            if let Some(known_fp) = hosts.get(&format!("{}:{}", config.host, config.port)) {
-                if known_fp != &fingerprint {
-                    return Err(SshMcpError::HostVerificationFailed(format!(
-                        "Host key mismatch for {}:{}",
-                        config.host, config.port
-                    )));
-                }
+        let config_clone = config.clone();
+        let host_port = format!("{}:{}", config.host, config.port);
+        
+        let fingerprint = tokio::task::spawn_blocking(move || -> Result<String> {
+            let session = SshClient::connect(&config_clone)?;
+            if let Some(host_key) = session.host_key() {
+                Ok(SshClient::calculate_fingerprint(host_key.0))
+            } else {
+                Err(SshMcpError::HostVerificationFailed("No host key available".to_string()))
+            }
+        })
+        .await
+        .map_err(|e| SshMcpError::SshConnection(format!("Task join error: {}", e)))??;
+        
+        let hosts = known_hosts.lock().await;
+        if let Some(known_fp) = hosts.get(&host_port) {
+            if known_fp != &fingerprint {
+                return Err(SshMcpError::HostVerificationFailed(format!(
+                    "Host key mismatch for {}",
+                    host_port
+                )));
             }
         }
     }
 
-    // Connect and create session
-    let session = SshClient::connect(&config)?;
-    let ssh_session = SshSession::new(config.clone(), session);
+    // Verify connection works in a blocking task
+    let config_clone = config.clone();
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let _session = SshClient::connect(&config_clone)?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| SshMcpError::SshConnection(format!("Task join error: {}", e)))??;
+    
+    // Create session without storing the SSH connection
+    let ssh_session = SshSession::new(config.clone());
     let session_id = session_manager.add_session(ssh_session).await?;
 
     Ok(json!({
@@ -109,18 +126,25 @@ pub async fn ssh_execute(params: Value, session_manager: Arc<SessionManager>) ->
     let params: ExecuteParams =
         serde_json::from_value(params).map_err(|e| SshMcpError::Validation(e.to_string()))?;
 
-    let result = session_manager
-        .with_session(&params.session_id, |session| {
-            let (stdout, stderr, exit_code) =
-                SshClient::execute_command(&session.session, &params.command)?;
-            Ok(json!({
-                "stdout": stdout,
-                "stderr": stderr,
-                "exitCode": exit_code,
-                "success": exit_code == 0
-            }))
-        })
+    // Get session config
+    let config = session_manager
+        .with_session(&params.session_id, |session| Ok(session.config.clone()))
         .await?;
+    
+    // Execute command in blocking task
+    let command = params.command.clone();
+    let result = tokio::task::spawn_blocking(move || -> Result<Value> {
+        let session = SshClient::connect(&config)?;
+        let (stdout, stderr, exit_code) = SshClient::execute_command(&session, &command)?;
+        Ok(json!({
+            "stdout": stdout,
+            "stderr": stderr,
+            "exitCode": exit_code,
+            "success": exit_code == 0
+        }))
+    })
+    .await
+    .map_err(|e| SshMcpError::SshConnection(format!("Task join error: {}", e)))??;
 
     Ok(result)
 }
@@ -176,20 +200,25 @@ pub async fn ssh_upload_file(params: Value, session_manager: Arc<SessionManager>
     let params: FileTransferParams =
         serde_json::from_value(params).map_err(|e| SshMcpError::Validation(e.to_string()))?;
 
-    session_manager
-        .with_session(&params.session_id, |session| {
-            SshClient::upload_file(
-                &session.session,
-                Path::new(&params.local_path),
-                &params.remote_path,
-            )?;
-            Ok(json!({
-                "localPath": params.local_path,
-                "remotePath": params.remote_path,
-                "uploaded": true
-            }))
-        })
-        .await
+    // Get session config
+    let config = session_manager
+        .with_session(&params.session_id, |session| Ok(session.config.clone()))
+        .await?;
+    
+    // Upload file in blocking task
+    let local_path = params.local_path.clone();
+    let remote_path = params.remote_path.clone();
+    tokio::task::spawn_blocking(move || -> Result<Value> {
+        let session = SshClient::connect(&config)?;
+        SshClient::upload_file(&session, Path::new(&local_path), &remote_path)?;
+        Ok(json!({
+            "localPath": local_path,
+            "remotePath": remote_path,
+            "uploaded": true
+        }))
+    })
+    .await
+    .map_err(|e| SshMcpError::FileOperation(format!("Task join error: {}", e)))?
 }
 
 pub async fn ssh_download_file(
@@ -199,20 +228,25 @@ pub async fn ssh_download_file(
     let params: FileTransferParams =
         serde_json::from_value(params).map_err(|e| SshMcpError::Validation(e.to_string()))?;
 
-    session_manager
-        .with_session(&params.session_id, |session| {
-            SshClient::download_file(
-                &session.session,
-                &params.remote_path,
-                Path::new(&params.local_path),
-            )?;
-            Ok(json!({
-                "remotePath": params.remote_path,
-                "localPath": params.local_path,
-                "downloaded": true
-            }))
-        })
-        .await
+    // Get session config
+    let config = session_manager
+        .with_session(&params.session_id, |session| Ok(session.config.clone()))
+        .await?;
+    
+    // Download file in blocking task
+    let local_path = params.local_path.clone();
+    let remote_path = params.remote_path.clone();
+    tokio::task::spawn_blocking(move || -> Result<Value> {
+        let session = SshClient::connect(&config)?;
+        SshClient::download_file(&session, &remote_path, Path::new(&local_path))?;
+        Ok(json!({
+            "remotePath": remote_path,
+            "localPath": local_path,
+            "downloaded": true
+        }))
+    })
+    .await
+    .map_err(|e| SshMcpError::FileOperation(format!("Task join error: {}", e)))?
 }
 
 #[derive(Debug, Deserialize)]

@@ -1,7 +1,7 @@
 use crate::config::{PortForwardConfig, SshConfig};
 use crate::error::{Result, SshMcpError};
 use chrono::{DateTime, Utc};
-use ssh2::{Session, Sftp};
+// Remove ssh2 imports as Session is not Send and can't be stored in async context
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -13,19 +13,19 @@ use uuid::Uuid;
 pub struct SshSession {
     pub id: String,
     pub config: SshConfig,
-    pub session: Session,
+    // Session removed - ssh2::Session is not Send
+    // We'll create new connections as needed in blocking tasks
     pub created_at: DateTime<Utc>,
     pub last_activity: DateTime<Utc>,
     pub port_forwards: Vec<PortForwardConfig>,
 }
 
 impl SshSession {
-    pub fn new(config: SshConfig, session: Session) -> Self {
+    pub fn new(config: SshConfig) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),
             config,
-            session,
             created_at: now,
             last_activity: now,
             port_forwards: Vec::new(),
