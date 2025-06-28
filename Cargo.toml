@@ -37,7 +37,7 @@ sha2 = "0.10"
 
 # Configuration
 config = "0.14"
-directories = "5.0"
+directories = "6.0"
 dirs = "5.0"
 
 # Utilities
