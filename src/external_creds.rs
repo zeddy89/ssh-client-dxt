@@ -37,13 +37,69 @@ impl ExternalCredentialProvider {
             )));
         }
 
+        // Check if this is an encrypted credential
         let content = fs::read_to_string(&cred_file).map_err(|e| {
             SshMcpError::CredentialStorage(format!("Failed to read credential: {}", e))
         })?;
 
-        serde_json::from_str(&content).map_err(|e| {
-            SshMcpError::CredentialStorage(format!("Invalid credential format: {}", e))
-        })
+        // Try to parse as encrypted credential first
+        if content.contains("\"encrypted_credential\"") {
+            // This is an encrypted credential, we need to decrypt it
+            // For now, we'll prompt for password and use the ssh-creds binary
+            use std::process::{Command, Stdio};
+            use std::io::Write;
+            
+            println!("This credential is encrypted. Enter master password:");
+            let password = rpassword::read_password().map_err(|e| {
+                SshMcpError::CredentialStorage(format!("Failed to read password: {}", e))
+            })?;
+            
+            // Find the ssh-creds binary
+            let ssh_creds_path = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|p| p.join("ssh-creds")))
+                .unwrap_or_else(|| PathBuf::from("ssh-creds"));
+            
+            let mut child = Command::new(&ssh_creds_path)
+                .arg("export")
+                .arg(ref_id)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .map_err(|e| {
+                    SshMcpError::CredentialStorage(format!("Failed to run ssh-creds: {}", e))
+                })?;
+            
+            // Send password to stdin
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(password.as_bytes()).map_err(|e| {
+                    SshMcpError::CredentialStorage(format!("Failed to send password: {}", e))
+                })?;
+            }
+            
+            let output = child.wait_with_output().map_err(|e| {
+                SshMcpError::CredentialStorage(format!("Failed to decrypt credential: {}", e))
+            })?;
+            
+            if !output.status.success() {
+                let error = String::from_utf8_lossy(&output.stderr);
+                return Err(SshMcpError::CredentialStorage(format!(
+                    "Failed to decrypt credential: {}",
+                    error
+                )));
+            }
+            
+            let decrypted = String::from_utf8_lossy(&output.stdout);
+            serde_json::from_str(&decrypted).map_err(|e| {
+                SshMcpError::CredentialStorage(format!("Invalid credential format: {}", e))
+            })
+        } else {
+            // Legacy unencrypted credential
+            serde_json::from_str(&content).map_err(|e| {
+                SshMcpError::CredentialStorage(format!("Invalid credential format: {}", e))
+            })
+        }
     }
 
     pub fn list_credentials(&self) -> Result<Vec<(String, String, String)>> {
