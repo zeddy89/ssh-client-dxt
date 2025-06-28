@@ -23,37 +23,40 @@ impl ExternalCredentialProvider {
         let mut creds_dir = dirs::home_dir().unwrap_or_default();
         creds_dir.push(".ssh-mcp");
         creds_dir.push("credentials");
-        
+
         Self { creds_dir }
     }
-    
+
     pub fn get_credential(&self, ref_id: &str) -> Result<ExternalCredential> {
         let cred_file = self.creds_dir.join(format!("{}.json", ref_id));
-        
+
         if !cred_file.exists() {
             return Err(SshMcpError::CredentialStorage(format!(
                 "Credential not found: {}. Use 'ssh-creds store' to create it.",
                 ref_id
             )));
         }
-        
-        let content = fs::read_to_string(&cred_file)
-            .map_err(|e| SshMcpError::CredentialStorage(format!("Failed to read credential: {}", e)))?;
-            
-        serde_json::from_str(&content)
-            .map_err(|e| SshMcpError::CredentialStorage(format!("Invalid credential format: {}", e)))
+
+        let content = fs::read_to_string(&cred_file).map_err(|e| {
+            SshMcpError::CredentialStorage(format!("Failed to read credential: {}", e))
+        })?;
+
+        serde_json::from_str(&content).map_err(|e| {
+            SshMcpError::CredentialStorage(format!("Invalid credential format: {}", e))
+        })
     }
-    
+
     pub fn list_credentials(&self) -> Result<Vec<(String, String, String)>> {
         let mut results = Vec::new();
-        
+
         if !self.creds_dir.exists() {
             return Ok(results);
         }
-        
-        let entries = fs::read_dir(&self.creds_dir)
-            .map_err(|e| SshMcpError::CredentialStorage(format!("Failed to read credentials directory: {}", e)))?;
-            
+
+        let entries = fs::read_dir(&self.creds_dir).map_err(|e| {
+            SshMcpError::CredentialStorage(format!("Failed to read credentials directory: {}", e))
+        })?;
+
         for entry in entries {
             if let Ok(entry) = entry {
                 let path = entry.path();
@@ -66,7 +69,8 @@ impl ExternalCredentialProvider {
                 }
             }
         }
-        
+
         Ok(results)
     }
 }
+

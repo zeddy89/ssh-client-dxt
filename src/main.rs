@@ -53,13 +53,13 @@ async fn main() -> Result<()> {
     // Use a custom stdio implementation that properly handles the MCP protocol
     use std::io::{BufRead, BufReader, Write};
     use tokio::task;
-    
+
     let stdin = std::io::stdin();
     let stdout = std::io::stdout();
     let mut stdout_lock = stdout.lock();
-    
+
     debug!("SSH Client MCP Server is running");
-    
+
     // Read JSON-RPC messages from stdin
     let reader = BufReader::new(stdin);
     for line in reader.lines() {
@@ -68,17 +68,15 @@ async fn main() -> Result<()> {
                 if line.trim().is_empty() {
                     continue;
                 }
-                
+
                 eprintln!("Received: {}", line);
-                
+
                 // Process the request
                 let response = task::block_in_place(|| {
                     let runtime = tokio::runtime::Handle::current();
-                    runtime.block_on(async {
-                        io.handle_request(&line).await
-                    })
+                    runtime.block_on(async { io.handle_request(&line).await })
                 });
-                
+
                 if let Some(response_str) = response {
                     writeln!(stdout_lock, "{}", response_str)?;
                     stdout_lock.flush()?;

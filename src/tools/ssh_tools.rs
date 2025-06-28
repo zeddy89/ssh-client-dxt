@@ -37,21 +37,38 @@ pub async fn ssh_connect(
         serde_json::from_value(params).map_err(|e| SshMcpError::Validation(e.to_string()))?;
 
     // Check for external credential reference first
-    let (password, private_key_path, passphrase, username) = if let Some(ref_id) = &params.credential_ref {
+    let (password, private_key_path, passphrase, username) = if let Some(ref_id) =
+        &params.credential_ref
+    {
         // Use external credential provider
         let external_provider = ExternalCredentialProvider::new();
         let external_cred = external_provider.get_credential(ref_id)?;
-        
+
         match external_cred.cred_type.as_str() {
-            "password" => (Some(external_cred.credential), None, None, external_cred.username),
-            "keypath" => (None, Some(PathBuf::from(external_cred.credential)), None, external_cred.username),
+            "password" => (
+                Some(external_cred.credential),
+                None,
+                None,
+                external_cred.username,
+            ),
+            "keypath" => (
+                None,
+                Some(PathBuf::from(external_cred.credential)),
+                None,
+                external_cred.username,
+            ),
             "keyfile" => {
                 // TODO: Write key content to temporary file
                 return Err(SshMcpError::Validation(
-                    "Private key content not yet supported. Use keypath type instead.".to_string()
+                    "Private key content not yet supported. Use keypath type instead.".to_string(),
                 ));
             }
-            _ => return Err(SshMcpError::Validation(format!("Unknown credential type: {}", external_cred.cred_type)))
+            _ => {
+                return Err(SshMcpError::Validation(format!(
+                    "Unknown credential type: {}",
+                    external_cred.cred_type
+                )))
+            }
         }
     } else {
         // Fall back to internal credential provider
@@ -69,8 +86,13 @@ pub async fn ssh_connect(
         } else {
             params.passphrase
         };
-        
-        (password, private_key_path, passphrase, params.username.clone())
+
+        (
+            password,
+            private_key_path,
+            passphrase,
+            params.username.clone(),
+        )
     };
 
     let config = SshConfig {

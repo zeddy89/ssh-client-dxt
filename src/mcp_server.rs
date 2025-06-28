@@ -79,7 +79,7 @@ impl McpServer {
         });
 
         io.add_sync_method("initialize", move |_: Params| Ok(server_info.clone()));
-        
+
         // Add initialized notification handler
         io.add_notification("notifications/initialized", |_: Params| ());
 
