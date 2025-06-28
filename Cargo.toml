@@ -36,7 +36,7 @@ uuid = { version = "1.10", features = ["v4"] }
 sha2 = "0.10"
 
 # Configuration
-config = "0.14"
+config = "0.15"
 directories = "5.0"
 dirs = "5.0"
 
