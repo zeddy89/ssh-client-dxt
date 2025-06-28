@@ -48,10 +48,10 @@ impl CredentialManager {
     #[cfg(windows)]
     fn set_windows_permissions(path: &Path) -> Result<()> {
         use std::process::Command;
-        
+
         // Get current username
         let username = std::env::var("USERNAME").unwrap_or_else(|_| "User".to_string());
-        
+
         // Remove inheritance and grant full control only to current user
         // icacls "path" /inheritance:r /grant:r "username:F"
         let output = Command::new("icacls")
@@ -60,14 +60,11 @@ impl CredentialManager {
             .arg("/grant:r")
             .arg(&format!("{}:F", username))
             .output()?;
-            
+
         if !output.status.success() {
             // Fallback: try with takeown first
-            Command::new("takeown")
-                .arg("/f")
-                .arg(path)
-                .output()?;
-                
+            Command::new("takeown").arg("/f").arg(path).output()?;
+
             // Retry icacls
             let retry = Command::new("icacls")
                 .arg(path)
@@ -75,15 +72,17 @@ impl CredentialManager {
                 .arg("/grant:r")
                 .arg(&format!("{}:F", username))
                 .output()?;
-                
+
             if !retry.status.success() {
-                eprintln!("Warning: Could not set Windows ACLs. Credentials may not be fully protected.");
+                eprintln!(
+                    "Warning: Could not set Windows ACLs. Credentials may not be fully protected."
+                );
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn new() -> Result<Self> {
         let mut creds_dir = home_dir().context("Failed to get home directory")?;
         creds_dir.push(".ssh-mcp");
@@ -112,21 +111,22 @@ impl CredentialManager {
     fn derive_key(password: &str, salt: &[u8]) -> Result<[u8; AES_KEY_SIZE]> {
         let argon2 = Argon2::default();
         let mut key = [0u8; AES_KEY_SIZE];
-        
+
         // Use Argon2 for key derivation
-        let salt_str = SaltString::encode_b64(salt).map_err(|e| anyhow::anyhow!("Salt error: {}", e))?;
+        let salt_str =
+            SaltString::encode_b64(salt).map_err(|e| anyhow::anyhow!("Salt error: {}", e))?;
         let hash = argon2
             .hash_password(password.as_bytes(), &salt_str)
             .map_err(|e| anyhow::anyhow!("Failed to derive key: {}", e))?;
-        
+
         // Extract the hash and use first 32 bytes as key
         let hash_bytes = hash.hash.context("No hash found")?;
         let hash_raw = hash_bytes.as_bytes();
-        
+
         if hash_raw.len() < AES_KEY_SIZE {
             return Err(anyhow::anyhow!("Hash too short"));
         }
-        
+
         key.copy_from_slice(&hash_raw[..AES_KEY_SIZE]);
         Ok(key)
     }
@@ -140,20 +140,20 @@ impl CredentialManager {
         // Generate salt and nonce
         let salt = SaltString::generate(&mut OsRng);
         let salt_bytes = salt.as_str().as_bytes().to_vec();
-        
+
         let mut nonce_bytes = [0u8; AES_NONCE_SIZE];
         use rand::RngCore;
         rand::thread_rng().fill_bytes(&mut nonce_bytes);
 
         // Derive key from password
         let key = Self::derive_key(password, &salt_bytes)?;
-        
+
         // Create cipher
-        let cipher = Aes256Gcm::new_from_slice(&key)
-            .map_err(|_| anyhow::anyhow!("Invalid key length"))?;
-        
+        let cipher =
+            Aes256Gcm::new_from_slice(&key).map_err(|_| anyhow::anyhow!("Invalid key length"))?;
+
         let nonce = Nonce::from_slice(&nonce_bytes);
-        
+
         // Encrypt
         let ciphertext = cipher
             .encrypt(nonce, data)
@@ -162,7 +162,12 @@ impl CredentialManager {
         Ok((ciphertext, nonce_bytes.to_vec(), salt_bytes))
     }
 
-    fn decrypt_data(ciphertext: &[u8], password: &str, nonce: &[u8], salt: &[u8]) -> Result<Vec<u8>> {
+    fn decrypt_data(
+        ciphertext: &[u8],
+        password: &str,
+        nonce: &[u8],
+        salt: &[u8],
+    ) -> Result<Vec<u8>> {
         use aes_gcm::{
             aead::{Aead, KeyInit},
             Aes256Gcm, Nonce,
@@ -170,13 +175,13 @@ impl CredentialManager {
 
         // Derive key from password
         let key = Self::derive_key(password, salt)?;
-        
+
         // Create cipher
-        let cipher = Aes256Gcm::new_from_slice(&key)
-            .map_err(|_| anyhow::anyhow!("Invalid key length"))?;
-        
+        let cipher =
+            Aes256Gcm::new_from_slice(&key).map_err(|_| anyhow::anyhow!("Invalid key length"))?;
+
         let nonce = Nonce::from_slice(nonce);
-        
+
         // Decrypt
         let plaintext = cipher
             .decrypt(nonce, ciphertext)
@@ -188,14 +193,14 @@ impl CredentialManager {
     fn store_credential(&self, password: &str) -> Result<()> {
         println!("SSH MCP Credential Store (Encrypted)");
         println!("====================================");
-        
+
         // Get description
         print!("Enter description: ");
         io::stdout().flush()?;
         let mut description = String::new();
         io::stdin().read_line(&mut description)?;
         let description = description.trim().to_string();
-        
+
         // Get credential type
         println!("\nCredential type:");
         println!("1) Password");
@@ -203,63 +208,75 @@ impl CredentialManager {
         println!("3) Private Key Content");
         print!("Select (1-3): ");
         io::stdout().flush()?;
-        
+
         let mut choice = String::new();
         io::stdin().read_line(&mut choice)?;
-        
+
         let (cred_type, username, credential) = match choice.trim() {
             "1" => {
                 print!("Enter username: ");
                 io::stdout().flush()?;
                 let mut username = String::new();
                 io::stdin().read_line(&mut username)?;
-                
+
                 print!("Enter password: ");
                 io::stdout().flush()?;
                 let credential = read_password()?;
-                
-                ("password".to_string(), username.trim().to_string(), credential)
+
+                (
+                    "password".to_string(),
+                    username.trim().to_string(),
+                    credential,
+                )
             }
             "2" => {
                 print!("Enter username: ");
                 io::stdout().flush()?;
                 let mut username = String::new();
                 io::stdin().read_line(&mut username)?;
-                
+
                 print!("Enter private key path: ");
                 io::stdout().flush()?;
                 let mut path = String::new();
                 io::stdin().read_line(&mut path)?;
                 let path = path.trim();
-                
+
                 // Verify file exists
                 if !Path::new(path).exists() {
                     return Err(anyhow::anyhow!("File not found: {}", path));
                 }
-                
-                ("keypath".to_string(), username.trim().to_string(), path.to_string())
+
+                (
+                    "keypath".to_string(),
+                    username.trim().to_string(),
+                    path.to_string(),
+                )
             }
             "3" => {
                 print!("Enter username: ");
                 io::stdout().flush()?;
                 let mut username = String::new();
                 io::stdin().read_line(&mut username)?;
-                
+
                 println!("Paste private key content (press Enter then Ctrl+D when done):");
                 let mut credential = String::new();
                 io::stdin().read_to_string(&mut credential)?;
-                
-                ("keyfile".to_string(), username.trim().to_string(), credential)
+
+                (
+                    "keyfile".to_string(),
+                    username.trim().to_string(),
+                    credential,
+                )
             }
             _ => return Err(anyhow::anyhow!("Invalid selection")),
         };
-        
+
         // Generate reference ID
         let ref_id = format!("ref_{}", Uuid::new_v4().as_simple());
-        
+
         // Encrypt the credential
         let (encrypted, nonce, salt) = Self::encrypt_data(credential.as_bytes(), password)?;
-        
+
         // Create encrypted credential
         let encrypted_cred = EncryptedCredential {
             id: ref_id.clone(),
@@ -271,14 +288,14 @@ impl CredentialManager {
             description,
             created: Utc::now().to_rfc3339(),
         };
-        
+
         // Save to file
         let cred_file = self.creds_dir.join(format!("{}.json", ref_id));
         let json = serde_json::to_string_pretty(&encrypted_cred)?;
-        
+
         let mut file = File::create(&cred_file)?;
         file.write_all(json.as_bytes())?;
-        
+
         // Set file permissions
         #[cfg(unix)]
         {
@@ -286,34 +303,34 @@ impl CredentialManager {
             let permissions = std::fs::Permissions::from_mode(0o600);
             fs::set_permissions(&cred_file, permissions)?;
         }
-        
+
         #[cfg(windows)]
         {
             Self::set_windows_permissions(&cred_file)?;
         }
-        
+
         println!("\n✓ Credential stored successfully (encrypted)!");
         println!("Reference ID: {}", ref_id);
         println!("\nUse this reference ID in Claude with ssh_connect:");
         println!("- credentialRef: {}", ref_id);
-        
+
         Ok(())
     }
 
     fn list_credentials(&self) -> Result<()> {
         println!("Stored Credentials");
         println!("==================");
-        
+
         let entries = fs::read_dir(&self.creds_dir)?;
         let mut found = false;
-        
+
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 let content = fs::read_to_string(&path)?;
-                
+
                 // Try to parse as encrypted first, then as plain
                 if content.contains("\"encrypted_credential\"") {
                     if let Ok(cred) = serde_json::from_str::<EncryptedCredential>(&content) {
@@ -339,11 +356,11 @@ impl CredentialManager {
                 }
             }
         }
-        
+
         if !found {
             println!("No credentials stored.");
         }
-        
+
         Ok(())
     }
 
@@ -353,31 +370,31 @@ impl CredentialManager {
         let mut ref_id = String::new();
         io::stdin().read_line(&mut ref_id)?;
         let ref_id = ref_id.trim();
-        
+
         let cred_file = self.creds_dir.join(format!("{}.json", ref_id));
-        
+
         if !cred_file.exists() {
             return Err(anyhow::anyhow!("Credential not found: {}", ref_id));
         }
-        
+
         // Show credential details
         let content = fs::read_to_string(&cred_file)?;
         let cred: EncryptedCredential = serde_json::from_str(&content)?;
-        
+
         println!("Delete credential: {}?", cred.description);
         print!("Confirm (y/N): ");
         io::stdout().flush()?;
-        
+
         let mut confirm = String::new();
         io::stdin().read_line(&mut confirm)?;
-        
+
         if confirm.trim().to_lowercase() == "y" {
             fs::remove_file(&cred_file)?;
             println!("✓ Credential deleted");
         } else {
             println!("Cancelled");
         }
-        
+
         Ok(())
     }
 
@@ -391,12 +408,19 @@ impl CredentialManager {
         #[cfg(target_os = "macos")]
         {
             use std::process::Command;
-            
+
             let output = Command::new("security")
-                .args(&["find-generic-password", "-a", "ssh-mcp", "-s", "master-password", "-w"])
+                .args(&[
+                    "find-generic-password",
+                    "-a",
+                    "ssh-mcp",
+                    "-s",
+                    "master-password",
+                    "-w",
+                ])
                 .output()
                 .map_err(|e| anyhow::anyhow!("Failed to run security command: {}", e))?;
-            
+
             if output.status.success() {
                 let password = String::from_utf8_lossy(&output.stdout);
                 return Ok(password.trim().to_string());
@@ -407,25 +431,25 @@ impl CredentialManager {
         let password = read_password()?;
         Ok(password)
     }
-    
+
     fn export_for_mcp(&self, ref_id: &str, password: &str) -> Result<()> {
         let cred_file = self.creds_dir.join(format!("{}.json", ref_id));
-        
+
         if !cred_file.exists() {
             return Err(anyhow::anyhow!("Credential not found: {}", ref_id));
         }
-        
+
         let content = fs::read_to_string(&cred_file)?;
         let encrypted_cred: EncryptedCredential = serde_json::from_str(&content)?;
-        
+
         // Decrypt the credential
         let encrypted_bytes = BASE64.decode(&encrypted_cred.encrypted_credential)?;
         let nonce_bytes = BASE64.decode(&encrypted_cred.nonce)?;
         let salt_bytes = BASE64.decode(&encrypted_cred.salt)?;
-        
+
         let decrypted = Self::decrypt_data(&encrypted_bytes, password, &nonce_bytes, &salt_bytes)?;
         let credential = String::from_utf8(decrypted)?;
-        
+
         // Create plain credential for MCP
         let plain_cred = PlainCredential {
             id: encrypted_cred.id,
@@ -435,10 +459,10 @@ impl CredentialManager {
             description: encrypted_cred.description,
             created: encrypted_cred.created,
         };
-        
+
         // Output as JSON for MCP to read
         println!("{}", serde_json::to_string(&plain_cred)?);
-        
+
         Ok(())
     }
 }
@@ -462,9 +486,9 @@ fn show_help() {
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let command = args.get(1).map(|s| s.as_str()).unwrap_or("help");
-    
+
     let manager = CredentialManager::new()?;
-    
+
     match command {
         "store" => {
             println!("Enter master password for encryption:");
@@ -496,6 +520,6 @@ fn main() -> Result<()> {
             std::process::exit(1);
         }
     }
-    
+
     Ok(())
 }
