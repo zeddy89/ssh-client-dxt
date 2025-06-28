@@ -27,6 +27,10 @@ yarn-error.log*
 .env.local
 .env.*.local
 
+# SSH MCP Credentials - NEVER commit
+.ssh-mcp/
+ssh-mcp-credentials/
+
 # OS files
 .DS_Store
 Thumbs.db

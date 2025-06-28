@@ -67,16 +67,21 @@ impl McpServer {
     pub fn register_methods(&self, io: &mut IoHandler) -> Result<()> {
         // Initialize method
         let server_info = json!({
-            "protocolVersion": "0.1.0",
-            "serverName": "ssh-client-mcp",
-            "serverVersion": "0.1.0",
+            "protocolVersion": "2024-11-05",
             "capabilities": {
-                "tools": true,
-                "prompts": true
+                "tools": {},
+                "prompts": {}
+            },
+            "serverInfo": {
+                "name": "ssh-client-mcp",
+                "version": "0.1.0"
             }
         });
 
         io.add_sync_method("initialize", move |_: Params| Ok(server_info.clone()));
+        
+        // Add initialized notification handler
+        io.add_notification("notifications/initialized", |_: Params| ());
 
         // List tools
         io.add_sync_method("tools/list", |_: Params| {
@@ -162,11 +167,20 @@ impl McpServer {
                 };
 
                 match result {
-                    Ok(value) => Ok(value),
+                    Ok(value) => Ok(json!({
+                        "content": [{
+                            "type": "text",
+                            "text": serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string())
+                        }]
+                    })),
                     Err(e) => {
                         error!("Tool call failed: {}", e);
                         Ok(json!({
-                            "error": e.to_string()
+                            "content": [{
+                                "type": "text",
+                                "text": format!("Error: {}", e)
+                            }],
+                            "isError": true
                         }))
                     }
                 }

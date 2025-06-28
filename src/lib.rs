@@ -13,6 +13,7 @@
 pub mod config;
 pub mod credential_provider;
 pub mod error;
+pub mod external_creds;
 pub mod mcp_server;
 pub mod prompts;
 pub mod session_manager;

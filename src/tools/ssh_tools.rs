@@ -1,6 +1,7 @@
 use crate::config::{PortForwardConfig, PortForwardType, SshConfig};
-use crate::credential_provider::{prompt_for_credential, CredentialProvider, CredentialType};
+use crate::credential_provider::{CredentialProvider, CredentialType};
 use crate::error::{Result, SshMcpError};
+use crate::external_creds::ExternalCredentialProvider;
 use crate::session_manager::{SessionManager, SshSession};
 use crate::ssh_client::SshClient;
 use serde::Deserialize;
@@ -22,6 +23,7 @@ pub struct ConnectParams {
     pub private_key_ref: Option<String>, // Reference to stored private key
     pub passphrase: Option<String>,
     pub passphrase_ref: Option<String>, // Reference to stored passphrase
+    pub credential_ref: Option<String>, // External credential reference (from ssh-creds tool)
     pub strict_host_checking: Option<bool>,
 }
 
@@ -34,26 +36,47 @@ pub async fn ssh_connect(
     let params: ConnectParams =
         serde_json::from_value(params).map_err(|e| SshMcpError::Validation(e.to_string()))?;
 
-    // Resolve credentials from references if provided
-    let password = if let Some(ref_id) = &params.password_ref {
-        Some(credential_provider.get_password(ref_id).await?)
+    // Check for external credential reference first
+    let (password, private_key_path, passphrase, username) = if let Some(ref_id) = &params.credential_ref {
+        // Use external credential provider
+        let external_provider = ExternalCredentialProvider::new();
+        let external_cred = external_provider.get_credential(ref_id)?;
+        
+        match external_cred.cred_type.as_str() {
+            "password" => (Some(external_cred.credential), None, None, external_cred.username),
+            "keypath" => (None, Some(PathBuf::from(external_cred.credential)), None, external_cred.username),
+            "keyfile" => {
+                // TODO: Write key content to temporary file
+                return Err(SshMcpError::Validation(
+                    "Private key content not yet supported. Use keypath type instead.".to_string()
+                ));
+            }
+            _ => return Err(SshMcpError::Validation(format!("Unknown credential type: {}", external_cred.cred_type)))
+        }
     } else {
-        params.password
-    };
+        // Fall back to internal credential provider
+        let password = if let Some(ref_id) = &params.password_ref {
+            Some(credential_provider.get_password(ref_id).await?)
+        } else {
+            params.password
+        };
 
-    // TODO: Implement private key retrieval from credential store when private_key_ref is provided
-    let private_key_path = params.private_key_path.map(PathBuf::from);
+        // TODO: Implement private key retrieval from credential store when private_key_ref is provided
+        let private_key_path = params.private_key_path.map(PathBuf::from);
 
-    let passphrase = if let Some(ref_id) = &params.passphrase_ref {
-        Some(credential_provider.get_passphrase(ref_id).await?)
-    } else {
-        params.passphrase
+        let passphrase = if let Some(ref_id) = &params.passphrase_ref {
+            Some(credential_provider.get_passphrase(ref_id).await?)
+        } else {
+            params.passphrase
+        };
+        
+        (password, private_key_path, passphrase, params.username.clone())
     };
 
     let config = SshConfig {
         host: params.host,
         port: params.port.unwrap_or(22),
-        username: params.username,
+        username,
         password,
         private_key_path,
         passphrase,
@@ -538,6 +561,7 @@ pub async fn ssh_config_manage(
 pub struct CredentialStoreParams {
     pub action: String,
     pub credential_type: Option<String>,
+    pub credential_value: Option<String>,
     pub description: Option<String>,
     pub reference_id: Option<String>,
 }
@@ -562,6 +586,10 @@ pub async fn ssh_credential_store(
                 }
             };
 
+            let credential_value = params.credential_value.ok_or_else(|| {
+                SshMcpError::Validation("credential_value required for store action".to_string())
+            })?;
+
             let description = params.description.unwrap_or_else(|| {
                 format!(
                     "Stored {} credential",
@@ -572,20 +600,6 @@ pub async fn ssh_credential_store(
                     }
                 )
             });
-
-            // Prompt user for credential outside of Claude's context
-            let prompt_msg = format!(
-                "Please enter {} for: {}",
-                match credential_type {
-                    CredentialType::Password => "password",
-                    CredentialType::PrivateKey => "private key content or path",
-                    CredentialType::Passphrase => "passphrase",
-                },
-                description
-            );
-
-            let credential_value =
-                prompt_for_credential(credential_type.clone(), &prompt_msg).await?;
 
             // Store credential and get reference ID
             let ref_id = credential_provider

@@ -40,6 +40,10 @@ pub fn get_tool_definitions() -> Vec<Value> {
                         "type": "string",
                         "description": "Reference ID for stored passphrase (preferred)"
                     },
+                    "credentialRef": {
+                        "type": "string",
+                        "description": "External credential reference from ssh-creds tool (most secure)"
+                    },
                     "strictHostChecking": {
                         "type": "boolean",
                         "description": "Enable strict host checking",
@@ -197,28 +201,15 @@ pub fn get_tool_definitions() -> Vec<Value> {
         }),
         json!({
             "name": "ssh_credential_store",
-            "description": "Store SSH credentials securely (never visible to Claude)",
+            "description": "DEPRECATED - Use 'ssh-creds' CLI tool for secure credential storage",
             "inputSchema": {
                 "type": "object",
                 "required": ["action"],
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["store", "list", "remove"],
-                        "description": "Action to perform"
-                    },
-                    "credentialType": {
-                        "type": "string",
-                        "enum": ["password", "privateKey", "passphrase"],
-                        "description": "Type of credential"
-                    },
-                    "description": {
-                        "type": "string",
-                        "description": "Human-readable description of the credential"
-                    },
-                    "referenceId": {
-                        "type": "string",
-                        "description": "Reference ID for remove action"
+                        "enum": ["help"],
+                        "description": "Only 'help' action is available"
                     }
                 }
             }
