@@ -6,6 +6,11 @@ node_modules/
 dist/
 build/
 
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+
 # Logs
 *.log
 npm-debug.log*

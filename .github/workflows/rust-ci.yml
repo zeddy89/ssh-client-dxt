@@ -1,0 +1,147 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [ main, rust-conversion ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable]
+        include:
+          # Only test nightly on Linux to save CI time
+          - os: ubuntu-latest
+            rust: nightly
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install build dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake perl
+    
+    - name: Install build dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        # Install OpenSSL and pkg-config for linking
+        brew install openssl@3 pkg-config
+        echo "PKG_CONFIG_PATH=$(brew --prefix openssl@3)/lib/pkgconfig" >> $GITHUB_ENV
+    
+    - name: Setup Windows build environment
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+    
+    - name: Install build tools (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install strawberryperl -y
+        echo "C:\strawberry\perl\bin" >> $env:GITHUB_PATH
+    
+    - name: Install Rust (stable)
+      if: matrix.rust == 'stable'
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Install Rust (nightly)
+      if: matrix.rust == 'nightly'
+      uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rustfmt, clippy
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-v3-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache cargo index
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-v3-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache cargo build
+      uses: actions/cache@v3
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-v3-${{ hashFiles('**/Cargo.lock') }}
+    
+    
+    - name: Fetch dependencies
+      run: cargo fetch
+    
+    - name: Check formatting
+      run: cargo fmt -- --check
+      continue-on-error: ${{ matrix.rust == 'nightly' }}
+    
+    - name: Run clippy
+      run: cargo clippy --all-targets
+      continue-on-error: ${{ matrix.rust == 'nightly' }}
+    
+    - name: Build
+      run: cargo build --verbose
+      env:
+        # For macOS, help the build find system libraries
+        MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os == 'macos-latest' && '10.15' || '' }}
+        # For Windows, ensure static CRT linkage
+        RUSTFLAGS: ${{ matrix.os == 'windows-latest' && '-C target-feature=+crt-static' || '' }}
+        # For Linux, ensure static linking
+        OPENSSL_STATIC: ${{ matrix.os == 'ubuntu-latest' && '1' || '' }}
+    
+    - name: Run tests
+      run: cargo test --verbose
+    
+    - name: Build documentation
+      run: cargo doc --no-deps
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install cargo-audit
+      run: cargo install cargo-audit
+    - name: Run security audit
+      run: cargo audit
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake perl
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+    
+    - name: Install tarpaulin
+      run: cargo install cargo-tarpaulin
+    
+    - name: Generate coverage
+      run: cargo tarpaulin --out Xml
+      env:
+        OPENSSL_STATIC: 1
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./cobertura.xml
+        fail_ci_if_error: false
+        verbose: true
