@@ -59,26 +59,39 @@ jobs:
       with:
         components: rustfmt, clippy
     
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-v2-${{ hashFiles('**/Cargo.lock') }}
+    # Temporarily disable caching to resolve dependency issues
+    # - name: Cache cargo registry
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: ~/.cargo/registry
+    #     key: ${{ runner.os }}-cargo-registry-v2-${{ hashFiles('**/Cargo.lock') }}
     
-    - name: Cache cargo index
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-v2-${{ hashFiles('**/Cargo.lock') }}
+    # - name: Cache cargo index
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: ~/.cargo/git
+    #     key: ${{ runner.os }}-cargo-index-v2-${{ hashFiles('**/Cargo.lock') }}
     
-    - name: Cache cargo build
-      uses: actions/cache@v3
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-v2-${{ hashFiles('**/Cargo.lock') }}
+    # - name: Cache cargo build
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: target
+    #     key: ${{ runner.os }}-cargo-build-target-v2-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Clean cargo cache
+      run: |
+        rm -rf ~/.cargo/registry/cache
+        rm -rf ~/.cargo/registry/src
+        rm -rf ~/.cargo/git
+        rm -rf target
     
     - name: Fetch dependencies
       run: cargo fetch --verbose
+    
+    - name: Check dependencies
+      run: |
+        cargo tree
+        ls -la ~/.cargo/registry/ || true
     
     - name: Check formatting
       run: cargo fmt -- --check
