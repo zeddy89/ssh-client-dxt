@@ -78,12 +78,21 @@ jobs:
     #     path: target
     #     key: ${{ runner.os }}-cargo-build-target-v2-${{ hashFiles('**/Cargo.lock') }}
     
-    - name: Clean cargo cache
+    - name: Clean cargo cache (Unix)
+      if: runner.os != 'Windows'
       run: |
         rm -rf ~/.cargo/registry/cache
         rm -rf ~/.cargo/registry/src
         rm -rf ~/.cargo/git
         rm -rf target
+    
+    - name: Clean cargo cache (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ~/.cargo/registry/cache
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ~/.cargo/registry/src
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ~/.cargo/git
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue target
     
     - name: Fetch dependencies
       run: cargo fetch --verbose
