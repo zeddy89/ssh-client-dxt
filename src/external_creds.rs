@@ -73,4 +73,3 @@ impl ExternalCredentialProvider {
         Ok(results)
     }
 }
-
