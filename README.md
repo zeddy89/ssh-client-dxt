@@ -1,195 +1,119 @@
-# SSH Client MCP Server (Rust Implementation)
+# SSH Client MCP Server
 
-A security-focused SSH client implemented as a Model Context Protocol (MCP) server, now in Rust with **true credential isolation**.
-
-## 🔐 True Credential Isolation
-
-This implementation features a groundbreaking security approach:
-- **Zero Credential Exposure**: Your passwords and private keys NEVER pass through the AI conversation
-- **External Credential Management**: Credentials are stored using a separate CLI tool (`ssh-creds`)
-- **Reference-Based Access**: Only secure UUID references are shared with the AI
-- **Local Storage**: All credentials stored locally with proper file permissions (600)
+A secure SSH client implementation for the Model Context Protocol (MCP) with encrypted credential storage.
 
 ## Features
 
-### Security Features
-- **True Credential Isolation**: External credential storage via `ssh-creds` CLI tool
-- **Reference-Based Authentication**: AI only sees UUID references, never actual credentials
-- **Host Key Verification**: Validates SSH host keys with fingerprint checking
-- **Session Management**: Automatic timeout and secure cleanup
-- **Memory Safety**: Implemented in Rust for maximum security
-- **No Credential Persistence in AI Context**: Credentials exist only in your secure local storage
-
-### Supported Operations
-- SSH connection management (password and key-based auth)
-- Command execution with output capture
-- SFTP file upload/download
-- Port forwarding (local and remote)
-- Session listing and management
-- Host key verification
-- Configuration management
+- 🔐 **Encrypted Credentials**: AES-256-GCM encryption with Argon2 key derivation
+- 🌍 **Cross-Platform**: Native support for Windows, macOS, and Linux
+- 🤖 **Zero Exposure**: Credentials never visible to AI assistants
+- ⚡ **High Performance**: Built with Rust for speed and safety
+- 🔑 **Secure Storage**: Integration with OS-native credential managers
 
 ## Installation
 
 ### Prerequisites
-- Rust toolchain (for building from source)
-- Claude Desktop or compatible MCP client
 
-### Quick Start
+- Rust 1.70+ (install from [rustup.rs](https://rustup.rs))
+- OpenSSL development libraries
+- Platform-specific requirements:
+  - **macOS**: Xcode Command Line Tools
+  - **Linux**: `libssl-dev`, `pkg-config`, `libsecret-1-dev`
+  - **Windows**: Visual Studio Build Tools
 
-1. Clone and build:
+### Build from Source
+
 ```bash
-git clone https://github.com/yourusername/ssh-client-dxt.git
-cd ssh-client-dxt
+git clone https://github.com/yourusername/ssh-client-mcp.git
+cd ssh-client-mcp
 cargo build --release
 ```
 
-2. Configure Claude Desktop:
+Binaries will be available in `target/release/`:
+- `ssh-client-mcp` - Main MCP server
+- `ssh-creds` - Credential management tool
+- `ssh-creds-gui` - GUI helper for credential storage
+
+## Quick Start
+
+### 1. Store Master Password
+
+```bash
+# Interactive GUI (recommended)
+./target/release/ssh-creds-gui
+
+# Or use platform-specific commands:
+# macOS
+security add-generic-password -a "ssh-mcp" -s "master-password" -w "YourPassword"
+
+# Windows
+cmdkey /add:ssh-mcp /user:master-password /pass:YourPassword
+
+# Linux
+secret-tool store --label="SSH MCP Master Password" service ssh-mcp username master-password
+```
+
+### 2. Store SSH Credentials
+
+```bash
+./target/release/ssh-creds store
+# Follow prompts to enter credentials
+```
+
+### 3. Configure Claude Desktop
+
 Add to your Claude Desktop configuration:
+
 ```json
 {
-  "ssh-client": {
-    "command": "/path/to/ssh-client-dxt/target/release/ssh-client-mcp",
-    "args": []
+  "mcpServers": {
+    "ssh-client": {
+      "command": "/path/to/ssh-client-mcp/scripts/[platform]-wrapper.sh",
+      "args": []
+    }
   }
 }
 ```
 
-## 🔑 Secure Credential Management
+Where `[platform]` is one of: `macos`, `linux`, `windows`
 
-### The ssh-creds Tool
+## Usage
 
-Store credentials securely OUTSIDE of the AI conversation:
-
-```bash
-# Store a password
-./ssh-creds store
-# Choose option 1 (Password)
-# Enter username and password
-# Receive a reference ID like: ref_abc123...
-
-# List stored credentials
-./ssh-creds list
-
-# Delete a credential
-./ssh-creds delete
-```
-
-### Using Credentials in Claude
-
-Once you have a reference ID from `ssh-creds`, use it in Claude:
+In Claude Desktop, you can use commands like:
 
 ```
-Use ssh_connect with:
-- host: "example.com"
-- credentialRef: "ref_abc123..."
+Connect to SSH server example.com using credentialRef "ref_abc123..."
+Execute "ls -la" on the SSH session
+Upload file.txt to /remote/path/
+Download /remote/file.txt to local path
 ```
 
-The AI never sees your actual credentials!
+## Tools Available
 
-## Usage Examples
-
-### Secure Connection (Recommended)
-```
-1. First, in your terminal:
-   $ ./ssh-creds store
-   (follow prompts, get reference ID)
-
-2. Then in Claude:
-   Use ssh_connect with:
-   - host: "example.com"
-   - credentialRef: "ref_your_id_here"
-```
-
-### Execute Commands
-```
-Use ssh_execute with:
-- sessionId: "session-id-from-connect"
-- command: "ls -la"
-```
-
-### File Transfer
-```
-Use ssh_upload_file with:
-- sessionId: "session-id"
-- localPath: "/path/to/local/file"
-- remotePath: "/path/to/remote/file"
-```
-
-## Available Tools
-
-1. **ssh_connect** - Establish SSH connections
-2. **ssh_execute** - Run commands on remote servers
-3. **ssh_disconnect** - Close SSH sessions
-4. **ssh_list_sessions** - View active sessions
-5. **ssh_upload_file** - Upload files via SFTP
-6. **ssh_download_file** - Download files via SFTP
-7. **ssh_port_forward** - Set up port forwarding
-8. **ssh_manage_keys** - Manage SSH keys (deprecated - use ssh-creds)
-9. **ssh_verify_host** - Verify host fingerprints
-10. **ssh_config_manage** - Save/load connection configurations
-11. **ssh_credential_store** - (DEPRECATED - use ssh-creds CLI instead)
-
-## Security Best Practices
-
-1. **Always use ssh-creds** for credential storage
-2. **Never type passwords or keys** in the Claude conversation
-3. **Verify host fingerprints** on first connection
-4. **Use SSH keys** instead of passwords when possible
-5. **Review stored credentials** regularly with `ssh-creds list`
-6. **Delete unused credentials** with `ssh-creds delete`
-
-## Architecture
-
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   Claude    │────▶│  MCP Server  │────▶│ SSH Session │
-│     AI      │     │    (Rust)    │     │  Management │
-└─────────────┘     └──────────────┘     └─────────────┘
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │  Credential  │
-                    │  References  │
-                    └──────────────┘
-                           │
-                           ▼
-┌─────────────┐     ┌──────────────┐
-│  Terminal   │────▶│  ssh-creds   │────▶ ~/.ssh-mcp/
-│    User     │     │   CLI Tool   │      credentials/
-└─────────────┘     └──────────────┘      (secure storage)
-```
-
-## Building from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/ssh-client-dxt.git
-cd ssh-client-dxt
-
-# Build release binary
-cargo build --release
-
-# The binary will be at:
-# target/release/ssh-client-mcp
-```
-
-## Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+The MCP server provides these tools:
+- `ssh_connect` - Connect to SSH servers
+- `ssh_execute` - Execute commands
+- `ssh_disconnect` - Close connections
+- `ssh_upload_file` - Upload files via SFTP
+- `ssh_download_file` - Download files via SFTP
+- `ssh_port_forward` - Set up port forwarding
+- `ssh_config_manage` - Manage saved configurations
 
 ## Security
 
-- Report security vulnerabilities privately via GitHub Security Advisories
-- See [SECURITY.md](./SECURITY.md) for our security policy
-- Review [SSH-CREDS-README.md](./SSH-CREDS-README.md) for credential security details
+- Credentials are encrypted at rest using AES-256-GCM
+- Master passwords are never stored in plain text
+- Integration with OS-native secure storage (Keychain, Credential Manager, Secret Service)
+- All connections use SSH2 protocol with modern ciphers
 
 ## License
 
-MIT License - See [LICENSE](./LICENSE) file for details
+MIT License - see LICENSE file for details
 
-## Acknowledgments
+## Contributing
 
-- Built on the Model Context Protocol specification
-- Uses the `ssh2` crate for SSH operations
-- Inspired by security-first design principles
+Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.
+
+## Support
+
+For issues and feature requests, please use the GitHub issue tracker.

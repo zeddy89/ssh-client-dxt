@@ -45,14 +45,7 @@ impl ExternalCredentialProvider {
         // Try to parse as encrypted credential first
         if content.contains("\"encrypted_credential\"") {
             // This is an encrypted credential, we need to decrypt it
-            // For now, we'll prompt for password and use the ssh-creds binary
-            use std::process::{Command, Stdio};
-            use std::io::Write;
-            
-            println!("This credential is encrypted. Enter master password:");
-            let password = rpassword::read_password().map_err(|e| {
-                SshMcpError::CredentialStorage(format!("Failed to read password: {}", e))
-            })?;
+            use std::process::Command;
             
             // Find the ssh-creds binary
             let ssh_creds_path = std::env::current_exe()
@@ -60,27 +53,14 @@ impl ExternalCredentialProvider {
                 .and_then(|p| p.parent().map(|p| p.join("ssh-creds")))
                 .unwrap_or_else(|| PathBuf::from("ssh-creds"));
             
-            let mut child = Command::new(&ssh_creds_path)
+            // ssh-creds will get the password from env/keychain/stdin itself
+            let output = Command::new(&ssh_creds_path)
                 .arg("export")
                 .arg(ref_id)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
+                .output()
                 .map_err(|e| {
                     SshMcpError::CredentialStorage(format!("Failed to run ssh-creds: {}", e))
                 })?;
-            
-            // Send password to stdin
-            if let Some(mut stdin) = child.stdin.take() {
-                stdin.write_all(password.as_bytes()).map_err(|e| {
-                    SshMcpError::CredentialStorage(format!("Failed to send password: {}", e))
-                })?;
-            }
-            
-            let output = child.wait_with_output().map_err(|e| {
-                SshMcpError::CredentialStorage(format!("Failed to decrypt credential: {}", e))
-            })?;
             
             if !output.status.success() {
                 let error = String::from_utf8_lossy(&output.stderr);

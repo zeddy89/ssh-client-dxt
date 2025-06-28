@@ -313,15 +313,30 @@ impl CredentialManager {
             
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 let content = fs::read_to_string(&path)?;
-                let cred: EncryptedCredential = serde_json::from_str(&content)?;
                 
-                found = true;
-                println!("\nID: {}", cred.id);
-                println!("  Type: {}", cred.cred_type);
-                println!("  Username: {}", cred.username);
-                println!("  Description: {}", cred.description);
-                println!("  Created: {}", cred.created);
-                println!("  Status: Encrypted ✓");
+                // Try to parse as encrypted first, then as plain
+                if content.contains("\"encrypted_credential\"") {
+                    if let Ok(cred) = serde_json::from_str::<EncryptedCredential>(&content) {
+                        found = true;
+                        println!("\nID: {}", cred.id);
+                        println!("  Type: {}", cred.cred_type);
+                        println!("  Username: {}", cred.username);
+                        println!("  Description: {}", cred.description);
+                        println!("  Created: {}", cred.created);
+                        println!("  Status: Encrypted ✓");
+                    }
+                } else {
+                    // Legacy plain credential
+                    if let Ok(cred) = serde_json::from_str::<PlainCredential>(&content) {
+                        found = true;
+                        println!("\nID: {}", cred.id);
+                        println!("  Type: {}", cred.cred_type);
+                        println!("  Username: {}", cred.username);
+                        println!("  Description: {}", cred.description);
+                        println!("  Created: {}", cred.created);
+                        println!("  Status: ⚠️  UNENCRYPTED (consider re-storing with encryption)");
+                    }
+                }
             }
         }
         
@@ -366,6 +381,33 @@ impl CredentialManager {
         Ok(())
     }
 
+    fn get_master_password_for_export(&self) -> Result<String> {
+        // 1. Try environment variable first
+        if let Ok(password) = std::env::var("SSH_MCP_MASTER_PASSWORD") {
+            return Ok(password);
+        }
+
+        // 2. Try macOS keychain
+        #[cfg(target_os = "macos")]
+        {
+            use std::process::Command;
+            
+            let output = Command::new("security")
+                .args(&["find-generic-password", "-a", "ssh-mcp", "-s", "master-password", "-w"])
+                .output()
+                .map_err(|e| anyhow::anyhow!("Failed to run security command: {}", e))?;
+            
+            if output.status.success() {
+                let password = String::from_utf8_lossy(&output.stdout);
+                return Ok(password.trim().to_string());
+            }
+        }
+
+        // 3. Try reading from stdin (for backward compatibility)
+        let password = read_password()?;
+        Ok(password)
+    }
+    
     fn export_for_mcp(&self, ref_id: &str, password: &str) -> Result<()> {
         let cred_file = self.creds_dir.join(format!("{}.json", ref_id));
         
@@ -441,8 +483,8 @@ fn main() -> Result<()> {
                 return Err(anyhow::anyhow!("Usage: ssh-creds export <ref_id>"));
             }
             let ref_id = &args[2];
-            // Read password from stdin (sent by MCP)
-            let password = read_password()?;
+            // Get password from various sources (env, keychain, or stdin)
+            let password = manager.get_master_password_for_export()?;
             manager.export_for_mcp(ref_id, &password)?;
         }
         "help" | "--help" | "-h" => {
