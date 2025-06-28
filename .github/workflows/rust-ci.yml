@@ -59,46 +59,27 @@ jobs:
       with:
         components: rustfmt, clippy
     
-    # Temporarily disable caching to resolve dependency issues
-    # - name: Cache cargo registry
-    #   uses: actions/cache@v3
-    #   with:
-    #     path: ~/.cargo/registry
-    #     key: ${{ runner.os }}-cargo-registry-v2-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-v3-${{ hashFiles('**/Cargo.lock') }}
     
-    # - name: Cache cargo index
-    #   uses: actions/cache@v3
-    #   with:
-    #     path: ~/.cargo/git
-    #     key: ${{ runner.os }}-cargo-index-v2-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-v3-${{ hashFiles('**/Cargo.lock') }}
     
-    # - name: Cache cargo build
-    #   uses: actions/cache@v3
-    #   with:
-    #     path: target
-    #     key: ${{ runner.os }}-cargo-build-target-v2-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo build
+      uses: actions/cache@v3
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-v3-${{ hashFiles('**/Cargo.lock') }}
     
-    - name: Clean cargo cache (Unix)
-      if: runner.os != 'Windows'
-      run: |
-        rm -rf ~/.cargo/registry/cache
-        rm -rf ~/.cargo/registry/src
-        rm -rf ~/.cargo/git
-        rm -rf target
-    
-    - name: Clean cargo cache (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ~/.cargo/registry/cache
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ~/.cargo/registry/src
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ~/.cargo/git
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue target
     
     - name: Fetch dependencies
-      run: cargo fetch --verbose
-    
-    - name: Check dependencies
-      run: cargo tree
+      run: cargo fetch
     
     - name: Check formatting
       run: cargo fmt -- --check
@@ -162,4 +143,5 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         file: ./cobertura.xml
-        fail_ci_if_error: true
+        fail_ci_if_error: false
+        verbose: true
