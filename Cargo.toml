@@ -10,12 +10,6 @@ license = "MIT"
 # SSH functionality
 ssh2 = "0.9"
 
-[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
-openssl = { version = "0.10", features = ["vendored"] }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-openssl = "0.10"
-
 # Async runtime
 tokio = { version = "1.40", features = ["full"] }
 
@@ -50,6 +44,12 @@ chrono = { version = "0.4", features = ["serde"] }
 base64 = "0.22"
 hex = "0.4"
 rpassword = "7.3"
+
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+openssl = "0.10"
 
 [dev-dependencies]
 tempfile = "3.10"

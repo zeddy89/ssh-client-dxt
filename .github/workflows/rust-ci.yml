@@ -98,9 +98,7 @@ jobs:
       run: cargo fetch --verbose
     
     - name: Check dependencies
-      run: |
-        cargo tree
-        ls -la ~/.cargo/registry/ || true
+      run: cargo tree
     
     - name: Check formatting
       run: cargo fmt -- --check
