@@ -37,7 +37,7 @@ jobs:
             asset_name: ssh-client-mcp-windows-amd64.exe
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install build dependencies (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
@@ -71,7 +71,9 @@ jobs:
         echo "C:\strawberry\perl\bin" >> $env:GITHUB_PATH
     
     - name: Build
-      run: cargo build --release --target ${{ matrix.target }}
+      run: |
+        cargo build --release --target ${{ matrix.target }}
+        cargo build --release --target ${{ matrix.target }} --bin ssh-creds
       env:
         # For macOS, help the build find system libraries
         MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os == 'macos-latest' && '10.15' || '' }}
@@ -80,56 +82,69 @@ jobs:
         # For Linux, ensure static linking
         OPENSSL_STATIC: ${{ matrix.os == 'ubuntu-latest' && '1' || '' }}
     
-    - name: Strip binary (Linux/macOS)
+    - name: Strip binaries (Linux/macOS)
       if: matrix.os != 'windows-latest'
-      run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+      run: |
+        strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+        strip target/${{ matrix.target }}/release/ssh-creds
+    
+    - name: Create archive
+      run: |
+        mkdir -p dist
+        cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          cp target/${{ matrix.target }}/release/ssh-creds.exe dist/
+        else
+          cp target/${{ matrix.target }}/release/ssh-creds dist/
+        fi
+      shell: bash
     
     - name: Upload binary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.asset_name }}
-        path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+        path: dist/*
 
   release:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: ./artifacts
     
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-        body: |
-          # SSH Client MCP Server ${{ github.ref }}
-          
-          ## Features
-          - Zero credential exposure to Claude
-          - Native performance with Rust
-          - Cross-platform support
-          
-          ## Installation
-          Download the appropriate binary for your platform and make it executable:
-          
-          ```bash
-          chmod +x ssh-client-mcp-*
-          ./ssh-client-mcp-*
-          ```
-    
-    - name: Upload Release Assets
+    - name: Create Release and Upload Assets
       run: |
+        # Create release
+        gh release create ${{ github.ref_name }} \
+          --title "Release ${{ github.ref_name }}" \
+          --notes "# SSH Client MCP Server ${{ github.ref_name }}
+          
+## Features
+- Zero credential exposure to Claude
+- Native performance with Rust
+- Cross-platform support
+- Encrypted credential storage (new!)
+
+## Installation
+Download the appropriate binary for your platform and make it executable:
+
+\`\`\`bash
+chmod +x ssh-client-mcp-*
+./ssh-client-mcp-*
+\`\`\`
+
+## What's New
+- Encrypted credential storage with AES-256-GCM
+- Cross-platform ssh-creds tool
+- Master password protection
+"
+        
+        # Upload assets
         for asset in ./artifacts/*; do
           asset_name=$(basename "$asset")
           echo "Uploading $asset_name"

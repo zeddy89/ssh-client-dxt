@@ -6,6 +6,14 @@ authors = ["SSH Client MCP Contributors"]
 description = "A secure SSH client implementation for the Model Context Protocol"
 license = "MIT"
 
+[[bin]]
+name = "ssh-creds"
+path = "src/bin/ssh-creds.rs"
+
+[[bin]]
+name = "ssh-creds-gui"
+path = "src/bin/ssh-creds-gui.rs"
+
 [dependencies]
 # SSH functionality
 ssh2 = "0.9"
@@ -34,6 +42,8 @@ keyring = "3.0"
 argon2 = "0.5"
 uuid = { version = "1.10", features = ["v4"] }
 sha2 = "0.10"
+aes-gcm = "0.10"
+rand = "0.8"
 
 # Configuration
 config = "0.14"
@@ -45,6 +55,8 @@ chrono = { version = "0.4", features = ["serde"] }
 base64 = "0.22"
 hex = "0.4"
 rpassword = "7.3"
+atty = "0.2"
+glob = "0.3"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
