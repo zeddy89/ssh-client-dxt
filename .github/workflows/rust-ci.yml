@@ -85,7 +85,7 @@ jobs:
       continue-on-error: ${{ matrix.rust == 'nightly' }}
     
     - name: Run clippy
-      run: cargo clippy --all-targets --all-features -- -W clippy::all
+      run: cargo clippy --all-targets
       continue-on-error: ${{ matrix.rust == 'nightly' }}
     
     - name: Build

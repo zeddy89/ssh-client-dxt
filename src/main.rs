@@ -42,13 +42,13 @@ async fn main() -> Result<()> {
     info!("Starting SSH Client MCP Server");
 
     // Create MCP server instance
-    let server = Arc::new(Mutex::new(McpServer::new().await?));
+    let mcp_server = Arc::new(Mutex::new(McpServer::new().await?));
 
     // Set up JSON-RPC handler
     let mut io = IoHandler::new();
 
     // Register MCP methods
-    server.lock().await.register_methods(&mut io)?;
+    mcp_server.lock().await.register_methods(&mut io)?;
 
     // Start stdio server
     let server = ServerBuilder::new(io).build();
