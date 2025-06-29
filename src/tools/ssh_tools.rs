@@ -25,6 +25,10 @@ pub struct ConnectParams {
     pub passphrase_ref: Option<String>, // Reference to stored passphrase
     pub credential_ref: Option<String>, // External credential reference (from ssh-creds tool)
     pub strict_host_checking: Option<bool>,
+    pub smart_mode: Option<bool>,       // Enable smart session features
+    pub safe_mode: Option<bool>,        // Block dangerous commands
+    pub auto_sudo: Option<bool>,        // Automatically add sudo when needed
+    pub correct_commands: Option<bool>, // Automatically correct common command mistakes
 }
 
 pub async fn ssh_connect(

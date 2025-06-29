@@ -18,6 +18,7 @@ pub struct SshSession {
     pub created_at: DateTime<Utc>,
     pub last_activity: DateTime<Utc>,
     pub port_forwards: Vec<PortForwardConfig>,
+    pub is_smart_session: bool,
 }
 
 impl SshSession {
@@ -29,6 +30,7 @@ impl SshSession {
             created_at: now,
             last_activity: now,
             port_forwards: Vec::new(),
+            is_smart_session: false,
         }
     }
 

@@ -46,6 +46,16 @@ pub enum SshMcpError {
 
     #[error("Other error: {0}")]
     Other(#[from] anyhow::Error),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Connection error: {0}")]
+    Connection(String),
+
+    #[error("Timeout: {0}")]
+    Timeout(String),
 }
 
 pub type Result<T> = std::result::Result<T, SshMcpError>;
+pub type SSHError = SshMcpError;

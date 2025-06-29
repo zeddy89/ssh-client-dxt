@@ -48,6 +48,26 @@ pub fn get_tool_definitions() -> Vec<Value> {
                         "type": "boolean",
                         "description": "Enable strict host checking",
                         "default": true
+                    },
+                    "smartMode": {
+                        "type": "boolean",
+                        "description": "Enable smart session features (system detection, command validation)",
+                        "default": true
+                    },
+                    "safeMode": {
+                        "type": "boolean",
+                        "description": "Block potentially dangerous commands",
+                        "default": true
+                    },
+                    "autoSudo": {
+                        "type": "boolean",
+                        "description": "Automatically add sudo when needed",
+                        "default": false
+                    },
+                    "correctCommands": {
+                        "type": "boolean",
+                        "description": "Automatically correct common command mistakes",
+                        "default": true
                     }
                 }
             }
@@ -60,7 +80,8 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["sessionId", "command"],
                 "properties": {
                     "sessionId": { "type": "string", "description": "SSH session ID" },
-                    "command": { "type": "string", "description": "Command to execute" }
+                    "command": { "type": "string", "description": "Command to execute" },
+                    "timeout": { "type": "integer", "description": "Command timeout in milliseconds (default: 30000)" }
                 }
             }
         }),

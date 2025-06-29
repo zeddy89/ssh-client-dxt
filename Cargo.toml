@@ -57,6 +57,7 @@ hex = "0.4"
 rpassword = "7.3"
 atty = "0.2"
 glob = "0.3"
+async-trait = "0.1"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
