@@ -48,7 +48,7 @@ rand = "0.8"
 # Configuration
 config = "0.14"
 directories = "5.0"
-dirs = "5.0"
+dirs = "6.0"
 
 # Utilities
 chrono = { version = "0.4", features = ["serde"] }
