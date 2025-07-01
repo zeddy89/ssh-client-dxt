@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use ssh2::Session;
-use std::collections::HashMap;
 use std::io::Read;
 
 use crate::error::SSHError;

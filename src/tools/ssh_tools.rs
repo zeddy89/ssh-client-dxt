@@ -405,7 +405,7 @@ pub async fn ssh_manage_keys(params: Value) -> Result<Value> {
             let entry = keyring::Entry::new(&params.service, &account)
                 .map_err(|e| SshMcpError::CredentialStorage(e.to_string()))?;
 
-            let password = entry
+            let _password = entry
                 .get_password()
                 .map_err(|e| SshMcpError::CredentialStorage(e.to_string()))?;
 
