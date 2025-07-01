@@ -50,11 +50,28 @@ pub struct SshConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub private_key_path: Option<PathBuf>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub private_key_data: Option<Vec<u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub passphrase: Option<String>,
     #[serde(default)]
     pub strict_host_checking: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+}
+
+impl Drop for SshConfig {
+    fn drop(&mut self) {
+        use zeroize::Zeroize;
+        if let Some(pwd) = self.password.as_mut() {
+            pwd.zeroize();
+        }
+        if let Some(pass) = self.passphrase.as_mut() {
+            pass.zeroize();
+        }
+        if let Some(key) = self.private_key_data.as_mut() {
+            key.zeroize();
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

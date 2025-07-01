@@ -113,6 +113,7 @@ mod tests {
                 username: "testuser".to_string(),
                 password: None,
                 private_key_path: None,
+                private_key_data: None,
                 passphrase: None,
                 strict_host_checking: true,
                 description: Some("Test server".to_string()),

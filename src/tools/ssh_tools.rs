@@ -41,7 +41,7 @@ pub async fn ssh_connect(
         serde_json::from_value(params).map_err(|e| SshMcpError::Validation(e.to_string()))?;
 
     // Check for external credential reference first
-    let (password, private_key_path, passphrase, username) = if let Some(ref_id) =
+    let (password, private_key_path, private_key_data, passphrase, username) = if let Some(ref_id) =
         &params.credential_ref
     {
         // Use external credential provider
@@ -53,20 +53,23 @@ pub async fn ssh_connect(
                 Some(external_cred.credential),
                 None,
                 None,
+                None,
                 external_cred.username,
             ),
             "keypath" => (
                 None,
                 Some(PathBuf::from(external_cred.credential)),
                 None,
+                None,
                 external_cred.username,
             ),
-            "keyfile" => {
-                // TODO: Write key content to temporary file
-                return Err(SshMcpError::Validation(
-                    "Private key content not yet supported. Use keypath type instead.".to_string(),
-                ));
-            }
+            "keyfile" => (
+                None,
+                None,
+                Some(external_cred.credential.into_bytes()),
+                None,
+                external_cred.username,
+            ),
             _ => {
                 return Err(SshMcpError::Validation(format!(
                     "Unknown credential type: {}",
@@ -82,8 +85,12 @@ pub async fn ssh_connect(
             params.password
         };
 
-        // TODO: Implement private key retrieval from credential store when private_key_ref is provided
         let private_key_path = params.private_key_path.map(PathBuf::from);
+        let private_key_data = if let Some(ref_id) = &params.private_key_ref {
+            Some(credential_provider.get_private_key(ref_id).await?)
+        } else {
+            None
+        };
 
         let passphrase = if let Some(ref_id) = &params.passphrase_ref {
             Some(credential_provider.get_passphrase(ref_id).await?)
@@ -94,6 +101,7 @@ pub async fn ssh_connect(
         (
             password,
             private_key_path,
+            private_key_data,
             passphrase,
             params.username.clone(),
         )
@@ -105,6 +113,7 @@ pub async fn ssh_connect(
         username,
         password,
         private_key_path,
+        private_key_data,
         passphrase,
         strict_host_checking: params.strict_host_checking.unwrap_or(true),
         description: None,
@@ -136,6 +145,11 @@ pub async fn ssh_connect(
                     host_port
                 )));
             }
+        } else {
+            return Err(SshMcpError::HostVerificationFailed(format!(
+                "Unknown host: {}. Use ssh_verify_host to add fingerprint",
+                host_port
+            )));
         }
     }
 
@@ -391,7 +405,7 @@ pub async fn ssh_manage_keys(params: Value) -> Result<Value> {
             let entry = keyring::Entry::new(&params.service, &account)
                 .map_err(|e| SshMcpError::CredentialStorage(e.to_string()))?;
 
-            let password = entry
+            let _password = entry
                 .get_password()
                 .map_err(|e| SshMcpError::CredentialStorage(e.to_string()))?;
 

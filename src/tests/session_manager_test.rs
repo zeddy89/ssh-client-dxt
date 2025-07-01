@@ -12,6 +12,7 @@ mod tests {
             username: "testuser".to_string(),
             password: Some("password".to_string()),
             private_key_path: None,
+            private_key_data: None,
             passphrase: None,
             strict_host_checking: false,
             description: Some("Test connection".to_string()),

@@ -65,7 +65,7 @@ impl CommandValidator {
 
         // Service management aliases
         match &self.system_info.init_system {
-            Some(crate::system_detector::InitSystem::Systemd) => {
+            Some(InitSystem::Systemd) => {
                 self.command_aliases.insert(
                     "service start".to_string(),
                     vec!["systemctl start".to_string()],
@@ -83,7 +83,7 @@ impl CommandValidator {
                     vec!["systemctl status".to_string()],
                 );
             }
-            Some(crate::system_detector::InitSystem::SysVInit) => {
+            Some(InitSystem::SysVInit) => {
                 self.command_aliases
                     .insert("systemctl start".to_string(), vec!["service".to_string()]);
                 self.command_aliases

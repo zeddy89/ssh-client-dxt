@@ -48,6 +48,25 @@ impl SshClient {
 
     fn authenticate(session: &mut Session, config: &SshConfig) -> Result<()> {
         // Try key-based authentication first
+        if let Some(key_data) = &config.private_key_data {
+            debug!("Attempting key-based authentication from memory");
+
+            let key_str = std::str::from_utf8(key_data).map_err(|e| {
+                SshMcpError::AuthenticationFailed(format!("Invalid key data: {}", e))
+            })?;
+
+            let result = if let Some(passphrase) = &config.passphrase {
+                session.userauth_pubkey_memory(&config.username, None, key_str, Some(passphrase))
+            } else {
+                session.userauth_pubkey_memory(&config.username, None, key_str, None)
+            };
+
+            if result.is_ok() && session.authenticated() {
+                debug!("Key-based authentication successful");
+                return Ok(());
+            }
+        }
+
         if let Some(key_path) = &config.private_key_path {
             debug!("Attempting key-based authentication with {:?}", key_path);
 
