@@ -43,6 +43,36 @@ fn clear_screen() {
     }
 }
 
+#[cfg(windows)]
+fn set_windows_permissions(path: &std::path::Path) -> Result<()> {
+    use std::process::Command;
+
+    let username = std::env::var("USERNAME").unwrap_or_else(|_| "User".to_string());
+
+    let output = Command::new("icacls")
+        .arg(path)
+        .arg("/inheritance:r")
+        .arg("/grant:r")
+        .arg(&format!("{}:F", username))
+        .output()?;
+
+    if !output.status.success() {
+        Command::new("takeown").arg("/f").arg(path).output().ok();
+        let retry = Command::new("icacls")
+            .arg(path)
+            .arg("/inheritance:r")
+            .arg("/grant:r")
+            .arg(&format!("{}:F", username))
+            .output()?;
+        if !retry.status.success() {
+            println!(
+                "Warning: Could not set Windows ACLs. Temporary file may not be fully protected."
+            );
+        }
+    }
+    Ok(())
+}
+
 fn show_menu() {
     println!("SSH MCP Encrypted Credentials Helper");
     println!("====================================");
@@ -151,6 +181,11 @@ fn create_temp_file() -> Result<()> {
         use std::os::unix::fs::PermissionsExt;
         let permissions = std::fs::Permissions::from_mode(0o600);
         std::fs::set_permissions(&temp_file, permissions)?;
+    }
+
+    #[cfg(windows)]
+    {
+        set_windows_permissions(&temp_file)?;
     }
 
     println!("✓ Temporary password file created: {:?}", temp_file);

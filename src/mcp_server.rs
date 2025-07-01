@@ -254,12 +254,10 @@ struct PromptGetParams {
     arguments: Value,
 }
 
-#[allow(dead_code)]
 pub struct AuditLogger {
     log_path: Option<PathBuf>,
 }
 
-#[allow(dead_code)]
 impl AuditLogger {
     pub fn new(log_path: Option<PathBuf>) -> Result<Self> {
         Ok(Self { log_path })

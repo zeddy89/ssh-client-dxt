@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 #[derive(Debug, Clone)]
 pub struct CredentialReference {
@@ -22,9 +23,9 @@ pub enum CredentialType {
 
 #[derive(Clone)]
 enum StoredCredential {
-    Password(String),
-    PrivateKey(Vec<u8>),
-    Passphrase(String),
+    Password(Zeroizing<String>),
+    PrivateKey(Zeroizing<Vec<u8>>),
+    Passphrase(Zeroizing<String>),
 }
 
 pub struct CredentialProvider {
@@ -50,9 +51,11 @@ impl CredentialProvider {
         let id = Uuid::new_v4().to_string();
 
         let stored = match credential_type {
-            CredentialType::Password => StoredCredential::Password(value),
-            CredentialType::Passphrase => StoredCredential::Passphrase(value),
-            CredentialType::PrivateKey => StoredCredential::PrivateKey(value.into_bytes()),
+            CredentialType::Password => StoredCredential::Password(Zeroizing::new(value)),
+            CredentialType::Passphrase => StoredCredential::Passphrase(Zeroizing::new(value)),
+            CredentialType::PrivateKey => {
+                StoredCredential::PrivateKey(Zeroizing::new(value.into_bytes()))
+            }
         };
 
         let reference = CredentialReference {
@@ -75,7 +78,7 @@ impl CredentialProvider {
         let credentials = self.credentials.lock().await;
 
         match credentials.get(ref_id) {
-            Some(StoredCredential::Password(pwd)) => Ok(pwd.clone()),
+            Some(StoredCredential::Password(pwd)) => Ok(pwd.to_string()),
             Some(_) => Err(SshMcpError::CredentialStorage(
                 "Reference is not a password".to_string(),
             )),
@@ -90,7 +93,7 @@ impl CredentialProvider {
         let credentials = self.credentials.lock().await;
 
         match credentials.get(ref_id) {
-            Some(StoredCredential::PrivateKey(key)) => Ok(key.clone()),
+            Some(StoredCredential::PrivateKey(key)) => Ok(key.to_vec()),
             Some(_) => Err(SshMcpError::CredentialStorage(
                 "Reference is not a private key".to_string(),
             )),
@@ -105,7 +108,7 @@ impl CredentialProvider {
         let credentials = self.credentials.lock().await;
 
         match credentials.get(ref_id) {
-            Some(StoredCredential::Passphrase(pass)) => Ok(pass.clone()),
+            Some(StoredCredential::Passphrase(pass)) => Ok(pass.to_string()),
             Some(_) => Err(SshMcpError::CredentialStorage(
                 "Reference is not a passphrase".to_string(),
             )),
