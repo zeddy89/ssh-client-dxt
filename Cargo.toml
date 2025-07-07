@@ -19,7 +19,7 @@ path = "src/bin/ssh-creds-gui.rs"
 ssh2 = "0.9"
 
 # Async runtime
-tokio = { version = "1.40", features = ["full"] }
+tokio = { version = "1.46", features = ["full"] }
 
 # MCP protocol (JSON-RPC)
 serde = { version = "1.0", features = ["derive"] }
