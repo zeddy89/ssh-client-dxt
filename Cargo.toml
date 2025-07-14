@@ -46,7 +46,7 @@ aes-gcm = "0.10"
 rand = "0.8"
 
 # Configuration
-config = "0.14"
+config = "0.15"
 directories = "5.0"
 dirs = "5.0"
 
